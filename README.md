@@ -2,7 +2,7 @@
 This program uses U2-Net algorithm to subtract the background information and outputs the masked image to output directory.
 The input image is written in the code('soap.mp4').
 ### Requirements 
-- rembg
+- (rembg)[https://github.com/danielgatis/rembg]
 - numpy == 1.23.5
 - PIL
 ```
