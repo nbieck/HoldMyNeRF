@@ -1,6 +1,6 @@
 ## background_subtraction.py 
-This program uses U2-Net algorithm to subtract the background information and outputs the transformed video.
-The input image is written in the code('soap.mp4') and outputs a video named 'output.mp4'.
+This program uses U2-Net algorithm to subtract the background information and outputs the masked image to output directory.
+The input image is written in the code('soap.mp4').
 ### Requirements 
 - rembg
 - numpy == 1.23.5
