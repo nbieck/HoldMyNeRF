@@ -18,9 +18,8 @@ for imagePath in input_list:
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	
     cell_size = [gray.shape[0]//10, gray.shape[1]//10]
-    sum_blurr = 0
 
-    blurry_threshold = 1000
+    blurry_threshold = 50
 
     # used for looking up at the region where the laplation is used
     obj_width = [gray.shape[0], 0]
@@ -44,18 +43,15 @@ for imagePath in input_list:
                 elif h > obj_height[1]:
                      obj_height[1] = h
 
-                fm = variance_of_laplacian(cell)
-                sum_blurr += fm
 
-
-    # fm = variance_of_laplacian(gray)
+    fm = variance_of_laplacian(gray[obj_width[0]:obj_width[1], obj_height[0]:obj_height[1]])
     text = "Not Blurry"
     # if the focus measure is less than the supplied threshold,
     # then the image should be considered "blurry"
-    if sum_blurr < blurry_threshold:
+    if fm < blurry_threshold:
         text = "Blurry"
     # show the image
-    cv2.putText(image, "{}: {:.2f}".format(text, sum_blurr), (10, 30),
+    cv2.putText(image, "{}: {:.2f}".format(text, fm), (10, 30),
         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 3)
     cv2.imshow("Image", image)
     cv2.imshow("image in focus", image[obj_width[0]:obj_width[1], obj_height[0]:obj_height[1]])
