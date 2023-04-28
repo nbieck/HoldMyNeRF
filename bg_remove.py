@@ -18,7 +18,7 @@ while ret == True:
 
         # cv2.imshow('frame',output)
         # writer.write(output)
-        cv2.imwrite('output/'+str(cnt)+'.jpg', output)
+        cv2.imwrite('output/'+str(cnt).zfill(4)+'.jpg', output)
         cnt += 1
         k = cv2.waitKey(30) & 0xff
         if k == 27:
