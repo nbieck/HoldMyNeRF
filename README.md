@@ -1,6 +1,6 @@
 ## background_subtraction.py 
-This program uses U2-Net algorithm to subtract the background information and outputs the masked image to output directory.
-The input image is written in the code('soap.mp4').
+Command line app that can remove the background from a video or folder of images using the rembg library. Call with -h flag for information.
+
 ### Requirements 
 - (rembg)[https://github.com/danielgatis/rembg]
 - numpy == 1.23.5
