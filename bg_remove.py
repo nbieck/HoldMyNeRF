@@ -32,7 +32,7 @@ def video_reader(filename):
     framecount = 0
     ret, frame = cap.read()
     while ret == True:
-        yield frame, str(framecount).zfill(4) + ".jpg"
+        yield frame, str(framecount).zfill(4)
         ret, frame = cap.read()
         framecount += 1
 
@@ -42,15 +42,16 @@ def image_reader(folder):
     with os.scandir(folder) as it:
         for entry in it:
             if entry.is_file():
-                yield cv2.imread(entry.path), entry.name
+                base_name, _ = os.path.splitext(entry.name)
+                yield cv2.imread(entry.path), base_name
 
 def process_images(reader, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     for img, filename in reader:
-        output = remove(img)
+        output = remove(img, bgcolor=(0,0,0,0))
 
-        cv2.imwrite(os.path.join(output_dir, filename), output)
+        cv2.imwrite(os.path.join(output_dir, filename) + ".png", output)
 
 if __name__ == "__main__":
     reader = []
