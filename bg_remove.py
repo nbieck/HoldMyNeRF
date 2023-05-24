@@ -24,7 +24,7 @@ if __name__ == "__main__":
             print("Given input does not specify an existing directory")
             exit()
 
-from rembg import remove
+from rembg import remove, new_session
 import cv2
 
 def video_reader(filename):
@@ -47,9 +47,9 @@ def image_reader(folder):
 
 def process_images(reader, output_dir):
     os.makedirs(output_dir, exist_ok=True)
-
+    session = new_session('u2net')
     for img, filename in reader:
-        output = remove(img, bgcolor=(0,0,0,0))
+        output = remove(img, bgcolor=(0,0,0,0), session=session)
 
         cv2.imwrite(os.path.join(output_dir, filename) + ".png", output)
 
