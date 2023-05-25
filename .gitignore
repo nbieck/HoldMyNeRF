@@ -1,3 +1,4 @@
 tests/output/**
-
+output/**
+test_image/**
 venv
