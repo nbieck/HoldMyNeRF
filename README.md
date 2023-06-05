@@ -37,6 +37,8 @@ pip install -r requirements.txt
 
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
 
+**IMPORTANT** when building instant-ngp, ensure that you have the same python environment active as where the requirements were installed.
+
 ## Hold your own NeRF
 
 First off, we'll need a video of the object we want to NeRF. For better results:
