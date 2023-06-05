@@ -30,6 +30,12 @@ def preview_segmentation(params):
 
     return (img, [(mask, "Mask")])
 
+def run_nerf(params):
+    return {checkpoint_file: None, model:None}
+
+def create_video(params):
+    return None
+
 if __name__ == "__main__":
     #inputs
     video = gr.Video(format="mp4", source="upload", label="Video", interactive=True)
@@ -59,6 +65,8 @@ if __name__ == "__main__":
                         preview = gr.Button("Preview Segmentation")
                         preview.click(fn=preview_segmentation, inputs={video, text_prompt}, outputs=[segmentation], api_name="preview")
                         run = gr.Button("Submit")
+                        run.click(fn=run_nerf, inputs={video, text_prompt}, outputs=[model, checkpoint_file], api_name="nerf")
+
 
             with gr.Column():
                 with gr.Box():
@@ -71,6 +79,7 @@ if __name__ == "__main__":
                             orbit_video.render()
                             with gr.Accordion("Video Parameters", open=True):
                                 render_vid = gr.Button("Render Video")
+                                render_vid.click(fn=create_video, inputs={checkpoint_file}, outputs=[orbit_video], api_name="get_video")
 
         gr.Examples([["examples/cube_clean.mp4", "cube"]], inputs=[video, text_prompt])
 
