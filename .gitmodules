@@ -1,0 +1,9 @@
+[submodule "thirdparty/fc4-python3"]
+	path = thirdparty/fc4-python3
+	url = git@github.com:hurlbertvisionlab/fc4-python3.git
+[submodule "dependencies/Segment-Everything-Everywhere-All-At-Once"]
+	path = dependencies/Segment-Everything-Everywhere-All-At-Once
+	url = https://github.com/UX-Decoder/Segment-Everything-Everywhere-All-At-Once.git
+[submodule "dependencies/instant-ngp"]
+	path = dependencies/instant-ngp
+	url = https://github.com/NVlabs/instant-ngp.git
