@@ -4,9 +4,13 @@ import cv2
 HEADER_TEXT = """
 # Hold My NeRF
 
----
-
-Reconstructing a 3d model of an object from a video of it being held in the hand with a static camera using NeRF.
+## Instructions
+1. Provide a video of you turning the object to be captured in your hand.
+2. Draw a mask over the object in the frame preview shown, or provide a text prompt describing the object with a single word.
+3. Preview the segmentation to ensure that the object is shown correctly
+4. Start processing by pressing "Submit"
+5. A 3D model and the Instant-NGP checkpoint will be available for download once completed
+6. If desired, a video orbit of the object can be rendered from the NeRF directly
 """
 
 def get_first_frame(video: str):
