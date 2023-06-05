@@ -4,6 +4,7 @@
 [Niklas Bieck](https://github.com/nbieck) | [Fabiano Junior Maia Manschein](https://github.com/Fabulani) | [Yuya Takagi](https://github.com/shiohiyoko)
 
 __Jean Monnet University (UJM)__
+
 __Imaging and Light in Extended Reality (IMLEX)__
 
 __[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presentation]()__
