@@ -13,6 +13,7 @@ __[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presenta
 ## Requirements
 
 - [instant-ngp requirements](https://github.com/NVlabs/instant-ngp#requirements)
+- [FFmpeg](https://www.ffmpeg.org/)
 
 ## Installation
 
@@ -64,6 +65,13 @@ Examples of bad videos:
 ## Future work
 
 - [ ] Implement [blind image inpainting](https://arxiv.org/abs/2003.06816#:~:text=Blind%20inpainting%20is%20a%20task,missing%20areas%20in%20an%20image.) into the pipeline.
+
+## Notes
+
+Interesting discoveries during the development of this project that were implemented into the pipeline:
+
+- We deceive our camera pose estimator (COLMAP) by creating the illusion of camera movement around an object, while the actual movement is performed by the object itself.​ This is achieved by removing both the background and the hands from the images (or, in other words, by segmmenting the object).
+- Settings `"aabb_scale": 1` in the `transforms.json` file of the dataset improves the results significantly, as it prevents the NeRF model from extending rays to a much larger bounding box than the unit cube. As the handheld object will always be within the unit cube, this is the ideal value for this parameter and prevents outside floaters and noise.
 
 ## Acknowledgements
 
