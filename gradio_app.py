@@ -1,6 +1,11 @@
 import gradio as gr
 import cv2
 import numpy as np
+import tempfile
+import subprocess
+import os
+import shutil
+import sys
 
 HEADER_TEXT = """
 # Hold My NeRF
@@ -13,15 +18,15 @@ HEADER_TEXT = """
 5. A 3D model and the Instant-NGP checkpoint will be available for download once completed
 6. If desired, a video orbit of the object can be rendered from the NeRF directly
 """
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-def get_first_frame(video: str):
-    if video != "":
-        cap = cv2.VideoCapture(video)
-        is_read, img = cap.read()
-        if is_read:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            return gr.update(value=img, interactive=True)
-    return gr.update(value=None, interactive=False)
+def get_video_duration(video):
+    vid = cv2.VideoCapture(video)
+
+    fps = vid.get(cv2.CAP_PROP_FPS)
+    frames = vid.get(cv2.CAP_PROP_FRAME_COUNT)
+
+    return frames / fps
 
 def preview_segmentation(params):
     img = np.random.random(size=(300,300,3))
@@ -31,7 +36,32 @@ def preview_segmentation(params):
     return (img, [(mask, "Mask")])
 
 def run_nerf(params):
-    return {checkpoint_file: None, model:None}
+
+    video_file = params[video]
+    video_name = os.path.basename(video_file)
+    video_length = get_video_duration(video_file)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        shutil.copy2(video_file, tempdir)
+        print("Running COLMAP")
+        subprocess.run([sys.executable,
+                        os.path.join(ROOT_DIR,"dependencies/instant-ngp/scripts/colmap2nerf.py"), 
+                        "--video_in", os.path.join(tempdir, video_name),
+                        "--run_colmap",
+                        "--aabb_scale", "1",
+                        "--video_fps", str(int(100 / video_length)),
+                        "--overwrite"], cwd=tempdir)
+        print("Training NeRF")
+        subprocess.run([sys.executable,
+                        os.path.join(ROOT_DIR, "dependencies/instant-ngp/scripts/run.py"),
+                        "--gui", "false",
+                        "--n_steps", "1000",
+                        "--save_snapshot", "snapshot.ingp",
+                        "--save_mesh", "model.obj",
+                        "--scene", os.path.join(tempdir, "transforms.json")], cwd=tempdir)
+
+        return {checkpoint_file: os.path.join(tempdir, "snapshot.ingp"), 
+                model:os.path.join(tempdir, "model.obj")}
 
 def create_video(params):
     return None
