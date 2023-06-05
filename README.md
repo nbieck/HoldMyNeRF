@@ -1,51 +1,69 @@
-## background_subtraction.py 
-Command line app that can remove the background from a video or folder of images using the rembg library. Call with -h flag for information.
-
-### Requirements 
-- (rembg)[https://github.com/danielgatis/rembg]
-- numpy == 1.23.5
-- PIL
-```
-pip install rembg numpy==1.23.5
-```
-**CAUTION**
-numpy 1.24 will not work
+# :beers: Hold My NeRF!
 
 
-## Instructions
+[Niklas Bieck](https://github.com/nbieck) | [Fabiano Junior Maia Manschein](https://github.com/Fabulani) | [Yuya Takagi](https://github.com/shiohiyoko)
 
-Remove background from images with:
+__Jean Monnet University (UJM)__
+__Imaging and Light in Extended Reality (IMLEX)__
 
-```sh
-python bg_remove.py --img src dst
-```
+__[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presentation]()__
 
-where `src` is the source folder path containing all images, and `dst` is the destination folder for the images without background. The `--img` flag can be changed to `video` if `src` points to a video file.
 
-## SAM - Segment Anything
+## Requirements
 
-Requires `python>=3.8`, as well as `pytorch>=1.7` and `torchvision>=0.8`. Follow instructions [here](https://github.com/facebookresearch/segment-anything).
+- [instant-ngp requirements](https://github.com/NVlabs/instant-ngp#requirements)
 
-This command install PyTorch with CUDA:
+## Installation
+
+Clone the repo and initialize submodules with
 
 ```sh
-pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+git clone https://github.com/nbieck/HoldMyNeRF.git --recurse-submodules
 ```
 
-This installs SAM:
+If you just cloned the repository, but didn't initialize the submodules, run the following:
 
 ```sh
-pip install git+https://github.com/facebookresearch/segment-anything.git
+git submodule update --init --recursive
 ```
 
-Extra dependencies:
+Install Python requirements:
 
 ```sh
-pip install opencv-python pycocotools matplotlib onnxruntime onnx
+pip install -r requirements.txt
 ```
 
-To run the notebooks:
+Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
 
-```sh
-pip install jupyter
-```
+## Hold your own NeRF
+
+First off, we'll need a video of the object we want to NeRF. For better results:
+
+1. Film with an empty contrasting background.
+2. Avoid covering the object with your hands.
+3. Keep the object within frame at all times.
+4. Keep the video under 30s.
+
+Here's a quick example:
+
+![Good contrast dataset](docs\imgs\good_contrast.gif)
+
+Examples of bad videos:
+
+![Bad contrast dataset](docs\imgs\bad_contrast.gif)
+
+>GIFS GO HERE (side by side)
+
+
+
+
+
+## Examples
+
+## Future work
+
+- [ ] Implement [blind image inpainting](https://arxiv.org/abs/2003.06816#:~:text=Blind%20inpainting%20is%20a%20task,missing%20areas%20in%20an%20image.) into the pipeline.
+
+## Acknowledgements
+
+
