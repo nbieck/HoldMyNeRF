@@ -47,11 +47,11 @@ First off, we'll need a video of the object we want to NeRF. For better results:
 
 Here's a quick example:
 
-![Good contrast dataset](.\docs\imgs\good_contrast.gif)
+![Good contrast dataset](/docs/imgs/good_contrast.gif)
 
 Examples of bad videos:
 
-![Bad contrast dataset](.\docs\imgs\bad_contrast.gif)
+![Bad contrast dataset](/docs/imgs/bad_contrast.gif)
 
 >GIFS GO HERE (side by side)
 
