@@ -46,7 +46,10 @@ First off, we'll need a video of the object we want to NeRF. For better results:
 1. Film with an empty contrasting background.
 2. Avoid covering the object with your hands.
 3. Keep the object within frame at all times.
-4. Keep the video under 30s.
+4. Make sure the object fills most of the frame.
+5. Make sure the video covers most of the object (360° around it).
+6. Don't rotate the object too fast. Rotating it slowly and covering 360° in under 30s is recommended.
+7. Avoid transparent and reflective objects.
 
 Here's a quick example:
 
@@ -72,8 +75,8 @@ Examples of bad videos:
 
 Interesting discoveries during the development of this project that were implemented into the pipeline:
 
-- We deceive our camera pose estimator (COLMAP) by creating the illusion of camera movement around an object, while the actual movement is performed by the object itself.​ This is achieved by removing both the background and the hands from the images (or, in other words, by segmmenting the object).
-- Settings `"aabb_scale": 1` in the `transforms.json` file of the dataset improves the results significantly, as it prevents the NeRF model from extending rays to a much larger bounding box than the unit cube. As the handheld object will always be within the unit cube, this is the ideal value for this parameter and prevents outside floaters and noise.
+- We deceive our camera pose estimator (COLMAP) by creating the illusion of camera movement around an object, while the actual movement is performed by the object itself.​ This is achieved by removing both the background and the hands from the images (or, in other words, by segmenting the object).
+- Setting `"aabb_scale": 1` in the `transforms.json` file of the dataset improves the results significantly, as it prevents the NeRF model from extending rays to a much larger bounding box than the unit cube. As the handheld object will always be within the unit cube, this is the ideal value for this parameter and prevents outside floaters and noise.
 
 ## Acknowledgements
 
