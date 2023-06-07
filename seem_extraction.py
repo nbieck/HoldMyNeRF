@@ -24,18 +24,13 @@ import logging
 from config.cmdline import infer_image
 
 from rembg import remove
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
+
+from seem_extraction import SEEMPipeline
 
 
 from tasks import *
-print(os.path.join(os.getcwd(),'output/'))
-
-def parse_option():
-    parser = argparse.ArgumentParser('SEEM Demo', add_help=False)
-    parser.add_argument('--conf_files', default="configs/seem/seem_focall_lang.yaml", metavar="FILE", help='path to config file', )
-    args = parser.parse_args()
-
-    return args
-
 
 @torch.no_grad()
 def inference(model, image, reftxt):
@@ -47,14 +42,14 @@ def BuildSEEM()-> BaseModel:
     '''
     build args
     '''
-    args = parse_option()
-    opt = load_opt_from_config_files(args.conf_files)
+    # args = parse_option()
+    opt = load_opt_from_config_files('dependencies/SEEM/demo_code/configs/seem/seem_focall_lang.yaml')
     opt = init_distributed(opt)
 
     # META DATA
-    pretrained_pth = os.path.join("seem_focalt_v2.pt")
+    pretrained_pth = os.path.join("seem_focall_v1.pt")
     if not os.path.exists(pretrained_pth):
-        os.system("wget {}".format("https://projects4jw.blob.core.windows.net/x-decoder/release/seem_focalt_v2.pt"))
+        os.system("wget {}".format("https://projects4jw.blob.core.windows.net/x-decoder/release/seem_focall_v1.pt"))
     cur_model = 'Focal-T'
 
     '''
@@ -99,7 +94,7 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
                 np_input = cv2.imread(entry.path)
                 np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
 
-                mask, pred_class = inference(model=model, input_image=input_img, text_prompt=text_prompt)
+                mask, pred_class = inference(model=model, image=input_img, reftxt=text_prompt)
                 logging.info("found this class{}".format(pred_class))
 
                 mask = cv2.resize(mask, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
@@ -107,6 +102,6 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
                 np_input[mask==1] = 0
 
                 logging.info("Output results")
-                cv2.imwrite(out_path+base_name+'.png', np_input)
+                cv2.imwrite(os.path.join(out_path, base_name+'.png'), np_input)
             else:
                 logging.warning("Input file included non-file")
