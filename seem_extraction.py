@@ -6,26 +6,21 @@
 # --------------------------------------------------------
 
 import os
-import warnings
-import PIL
 from PIL import Image
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
-import gradio as gr
 import torch
 import argparse
-import whisper
-import numpy as np
 
-from gradio import processing_utils
-from xdecoder.BaseModel import BaseModel
+from dependencies.Segment-Everything-Everywhere-All-At-Once.demo_code.xdecoder.BaseModel import BaseModel
 from xdecoder import build_model
 from utils.distributed import init_distributed
 from utils.arguments import load_opt_from_config_files
-from utils.constants import COCO_PANOPTIC_CLASSES
 import cv2
 
-from rembg import remove, new_session
+from config.cmdline import infer_image
+
+from rembg import remove
 
 
 from tasks import *
@@ -38,72 +33,69 @@ def parse_option():
 
     return args
 
-'''
-build args
-'''
-args = parse_option()
-opt = load_opt_from_config_files(args.conf_files)
-opt = init_distributed(opt)
 
-# META DATA
-cur_model = 'None'
-if 'focalt' in args.conf_files:
+@torch.no_grad()
+def inference(model, image, reftxt):
+    with torch.autocast(device_type='cuda', dtype=torch.float16):
+        return infer_image(model, image, reftxt)
+    
+
+def BuildSEEM()-> BaseModel:
+    '''
+    build args
+    '''
+    args = parse_option()
+    opt = load_opt_from_config_files(args.conf_files)
+    opt = init_distributed(opt)
+
+    # META DATA
     pretrained_pth = os.path.join("seem_focalt_v2.pt")
     if not os.path.exists(pretrained_pth):
         os.system("wget {}".format("https://projects4jw.blob.core.windows.net/x-decoder/release/seem_focalt_v2.pt"))
     cur_model = 'Focal-T'
-elif 'focal' in args.conf_files:
-    pretrained_pth = os.path.join("seem_focall_v1.pt")
-    if not os.path.exists(pretrained_pth):
-        os.system("wget {}".format("https://projects4jw.blob.core.windows.net/x-decoder/release/seem_focall_v1.pt"))
-    cur_model = 'Focal-L'
 
-'''
-build model
-'''
-model = BaseModel(opt, build_model(opt)).from_pretrained(pretrained_pth).eval().cuda()
-with torch.no_grad():
-    model.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"], is_eval=True)
+    '''
+    build model
+    '''
+    model = BaseModel(opt, build_model(opt)).from_pretrained(pretrained_pth).eval().cuda()
+    with torch.no_grad():
+        model.model.sem_seg_head.predictor.lang_encoder.get_text_embeddings(COCO_PANOPTIC_CLASSES + ["background"], is_eval=True)
 
-'''
-audio
-'''
-audio = whisper.load_model("base")
+    return model
 
-@torch.no_grad()
-def inference(image, task, reftxt):
-    with torch.autocast(device_type='cuda', dtype=torch.float16):
-        # if 'Video' in task:
-        # return interactive_infer_video(model, audio, image, [''], reftxt='person')
-        
-        return interactive_infer_image(model, audio, image, task, reftxt=reftxt)
-img_path = "../shoe/images/"
-os.makedirs(os.getcwd()+'/output/', exist_ok=True)
-out_path = os.path.join(os.getcwd(), 'output/')
-print(os.getcwd())
-cnt = 0
-with os.scandir(img_path) as f:
-    for entry in f:
-        if entry.is_file():
-            base_name, _ = os.path.splitext(entry.name)
-            input_img = Image.open(entry.path)
-            print(input_img.size)
-            input_img = remove(input_img, bgcolor=(0,0,0,0)).convert('RGB')
-            # print(type(input_img))
-            np_input = cv2.imread(entry.path)
+def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
+    '''
+    Main function for preprocessing section. This code will segment the background with
+    rembg, and then use SEEM to segment the object based on the input text_prompt.
+    
+    Args: 
+        input_dir: Input relative path for input image directory
+        output_dir: Input the relative path for directory to put the segmented image
+    '''
 
-            print(np_input.shape)
-            np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
-            img, mask = inference({"image":input_img}, ['Text'], 'shoe')
+    # check the output dir
+    os.makedirs(os.getcwd()+output_dir, exist_ok=True)
+    out_path = os.path.join(os.getcwd(), 'output/')
 
-            img = img.convert('RGB')
-            for i, m in enumerate(mask):
-                m = cv2.resize(m, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
+    model = BuildSEEM()
 
-                np_input[m==255] = 0
+    with os.scandir(input_dir) as f:
+        for entry in f:
+            if entry.is_file():
+                base_name, _ = os.path.splitext(entry.name)
+                input_img = Image.open(entry.path)
+
+                input_img = remove(input_img, bgcolor=(0,0,0,0)).convert('RGB')
+
+                np_input = cv2.imread(entry.path)
+                np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
+
+                mask, pred_class = inference(model=model, input_image=input_img, text_prompt=text_prompt)
+
+                mask = cv2.resize(mask, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
+
+                np_input[mask==1] = 0
                 cv2.imwrite(out_path+base_name+'.png', np_input)
-                # cv2.imwrite(out_path+str(cnt)+'_mask'+'_'+str(i)+'.png', m)
-            # mask = mask.convert('RGB')
-            # img.save(out_path+str(cnt),'png')
-            # mask.save(out_path+str(cnt)+'_mask', 'jpeg')
-            cnt+=1
+
+if __name__ == "__main__":
+    SEEMPipeline("test_image", "output_img", "cube")
