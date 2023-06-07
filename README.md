@@ -9,6 +9,19 @@ __Imaging and Light in Extended Reality (IMLEX)__
 
 __[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presentation]()__
 
+__Table of contents:__
+- [Requirements](#requirements)
+- [Installation](#installation)
+  - [Docker](#docker)
+- [Hold your own NeRF](#hold-your-own-nerf)
+  - [Recording a dataset](#recording-a-dataset)
+  - [Launching the app](#launching-the-app)
+  - [Using the UI](#using-the-ui)
+- [Examples](#examples)
+- [Future work](#future-work)
+- [Notes](#notes)
+- [Acknowledgements](#acknowledgements)
+
 
 ## Requirements
 
