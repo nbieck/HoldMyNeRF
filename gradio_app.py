@@ -7,8 +7,9 @@ import os
 import shutil
 import sys
 import commentjson
-import zipfile
+import math
 from seem_extraction import SEEMPipeline, SEEMPreview
+from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
 HEADER_TEXT = """
 # 🍻 Hold My NeRF
@@ -53,7 +54,10 @@ def preview_segmentation(params):
 
     return (img, [(mask, params[text_prompt])])
 
-def run_nerf(params, progress=gr.Progress()):
+#used to convert a dict into something of the format a.key = value (needed to invoke run_ffmpeg)
+Object = lambda **kwargs: type("Object", (), kwargs)()
+
+def mask_frames(params, progress=gr.Progress()):
     video_file = params[video]
     video_name = os.path.basename(video_file)
     video_length = get_video_duration(video_file)
@@ -62,15 +66,34 @@ def run_nerf(params, progress=gr.Progress()):
     with tempfile.TemporaryDirectory() as tempdir:
         shutil.copy2(video_file, tempdir)
         progress((0,4), desc="Extracting Frames")
-        subprocess.run([sys.executable,
-                        os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
-                        "--video_in", os.path.join(tempdir, video_name),
-                        "--video_fps", str(int(100 / video_length)),
-                        "--overwrite"], cwd=tempdir)
+        run_ffmpeg(Object(
+            overwrite=True, 
+            images=os.path.join(tempdir, "frames"),
+            video_in=os.path.join(tempdir, video_name),
+            video_fps=math.ceil(100 / video_length),
+            time_slice=None))
 
         progress((1,4), desc="Removing Background")
         masked_dir = os.path.join(tempdir, "masked")
-        SEEMPipeline(os.path.join(tempdir, "images"), masked_dir, params[text_prompt])
+        SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt])
+
+        shutil.copytree(masked_dir, os.path.join(gradio_dir, "masked"), dirs_exist_ok=True)
+
+        zipf = shutil.make_archive(os.path.join(gradio_dir, "intermediates"), "zip", masked_dir, masked_dir)
+        with os.scandir(os.path.join(gradio_dir, "masked")) as it:
+            images = [f.path for f in it if f.is_file()]
+
+        return {intermediates: zipf,
+                masked_images: images}
+
+
+def run_nerf(params, progress=gr.Progress()):
+    intermediates_zip = params[intermediates]
+    gradio_dir = os.path.dirname(intermediates_zip.name)
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        masked_dir = os.path.join(tempdir, "masked")
+        shutil.unpack_archive(intermediates_zip.name, masked_dir)
 
         progress((2,4), desc="Running COLMAP")
         subprocess.run([sys.executable,
@@ -101,16 +124,6 @@ def run_nerf(params, progress=gr.Progress()):
 
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
-
-        if params[debug_intermediate]:
-            with zipfile.ZipFile(os.path.join(gradio_dir, "intermediates.zip"), "w") as zipf:
-                for root, _, filenames in os.walk(tempdir):
-                    for f in filenames:
-                        zipf.write(os.path.join(root, f))
-
-            return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
-                    model:os.path.join(gradio_dir, "model.obj"),
-                    intermediates:zipf.filename}
 
     return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
             model:os.path.join(gradio_dir, "model.obj")}
@@ -157,6 +170,8 @@ if __name__ == "__main__":
     model = gr.Model3D(label="3D Model", interactive=False, clear_color=[0,0,0])
     checkpoint_file = gr.File(label="Instant-NPG Checkpoint", interactive=False)
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
+    masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False)
+    masked_images.style(preview=True)
     intermediates = gr.Files(label="Intermediate Files", interactive=False, visible=False)
 
     with gr.Blocks() as demo:
@@ -172,13 +187,23 @@ if __name__ == "__main__":
                         use_per_image = gr.Checkbox(value=True, label="Per Image Latents")
                         n_steps = gr.Number(value=1000, label="#Steps", precision=0)
                         debug_intermediate = gr.Checkbox(value=False, label="Save Intermediates")
-                        debug_intermediate.change(fn=lambda dbg: gr.update(visible=dbg), inputs=[debug_intermediate], outputs=[intermediates])
+                        debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
 
                     with gr.Row():
                         preview = gr.Button("Preview Segmentation")
                         preview.click(fn=preview_segmentation, inputs={video, text_prompt}, outputs=[segmentation], api_name="preview")
                         run = gr.Button("Submit")
-                        run.click(fn=run_nerf, inputs={video, text_prompt, n_steps, use_per_image, debug_intermediate}, outputs=[model, checkpoint_file, intermediates], api_name="nerf")
+                        run.click(
+                                fn=mask_frames, 
+                                inputs={video, text_prompt}, 
+                                outputs=[masked_images, intermediates, model, checkpoint_file], 
+                                api_name="mask_frames"
+                            ).then(
+                                fn=run_nerf,
+                                inputs={intermediates, use_per_image, n_steps},
+                                outputs=[model, checkpoint_file],
+                                api_name="run_nerf"
+                            )
 
 
             with gr.Column():
@@ -194,6 +219,7 @@ if __name__ == "__main__":
                                 regen_model.click(fn=regen_model_fn, inputs=[checkpoint_file, model_res], outputs=[model], api_name="regen_model")
                         checkpoint_file.render()
                         intermediates.render()
+                        masked_images.render()
                         with gr.Box():
                             orbit_video.render()
                             with gr.Accordion("Video Parameters", open=True):
