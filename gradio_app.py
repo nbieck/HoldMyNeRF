@@ -41,7 +41,7 @@ def get_first_frame(video: str):
 
 def preview_segmentation(params):
     video_file = params[video]
-    gradio_dir = os.path.dirname(gradio_dir)
+    gradio_dir = os.path.dirname(video_file)
 
     get_first_frame(video_file)
 

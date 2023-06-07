@@ -1,0 +1,10 @@
+gradio==3.33.1
+opencv-python-headless
+commentjson
+kornia
+timm
+git+https://github.com/arogozhnikov/einops.git
+transformers
+nltk
+rembg
+git+https://github.com/MaureenZOU/detectron2-xyz.git

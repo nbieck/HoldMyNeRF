@@ -6,6 +6,8 @@
 # --------------------------------------------------------
 
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
 from PIL import Image
 import torch
 from dependencies.SEEM.demo_code.xdecoder.BaseModel import BaseModel
@@ -19,9 +21,7 @@ import logging
 from config.cmdline import infer_image
 
 from rembg import remove
-import sys
 import numpy as np
-sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
 
 from tasks import *
 

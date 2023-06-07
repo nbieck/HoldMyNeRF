@@ -32,7 +32,8 @@ git submodule update --init --recursive
 Install Python requirements:
 
 ```sh
-pip install -r requirements.txt
+pip install -r torch.txt
+pip install -r r.txt
 ```
 
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
