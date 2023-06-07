@@ -3,11 +3,12 @@ import os
 import tempfile
 sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
 # os.chdir(os.path.join(os.getcwd(), 'dependencies/SEEM/demo_code'))
-from seem_extraction import SEEMPipeline
+from seem_extraction import SEEMPipeline, SEEMPreview
     
 
 import argparse
 import os.path
+import cv2
 
 args = {}
 
@@ -23,4 +24,5 @@ if __name__ == "__main__":
 if __name__ == "__main__":
 
     SEEMPipeline(args.input, args.output, "cube")
-    
+    file = SEEMPreview(args.input, args.output, 'cube')
+    cv2.imshow(file)

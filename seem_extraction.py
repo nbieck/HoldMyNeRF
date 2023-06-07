@@ -7,12 +7,7 @@
 
 import os
 from PIL import Image
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
-
 import torch
-import argparse
-
-from dependencies.SEEM.demo_code import *
 from dependencies.SEEM.demo_code.xdecoder.BaseModel import BaseModel
 from dependencies.SEEM.demo_code.xdecoder import build_model
 from dependencies.SEEM.demo_code.utils.distributed import init_distributed
@@ -25,6 +20,7 @@ from config.cmdline import infer_image
 
 from rembg import remove
 import sys
+import numpy as np
 sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
 
 from tasks import *
@@ -40,14 +36,14 @@ def BuildSEEM()-> BaseModel:
     build args
     '''
     # args = parse_option()
-    opt = load_opt_from_config_files('dependencies/SEEM/demo_code/configs/seem/seem_focalt_lang.yaml')
+    opt = load_opt_from_config_files('dependencies/SEEM/demo_code/configs/seem/seem_focall_lang.yaml')
     opt = init_distributed(opt)
 
     # META DATA
-    pretrained_pth = os.path.join("seem_focalt_v2.pt")
+    pretrained_pth = os.path.join("seem_focall_v1.pt")
     if not os.path.exists(pretrained_pth):
-        os.system("wget {}".format("https://huggingface.co/xdecoder/SEEM/resolve/main/seem_focalt_v2.pt"))
-    cur_model = 'Focal-T'
+        os.system("wget {}".format("https://huggingface.co/xdecoder/SEEM/resolve/main/seem_focall_v1.pt"))
+    cur_model = 'Focal-L'
 
     '''
     build model
@@ -104,7 +100,17 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
                 logging.warning("Input file included non-file")
 
 
-def SEEMPreview(input_file:str,output_file:str, text_prompt:str):
+def SEEMPreview(input_file:str, text_prompt:str)->np.ndarray:
+    '''
+    This function allows the preview of the current picture.
+    You can use this to see if the masking is working with the prompt you are using.
+    
+    Args:
+        input_file: path to the image (ex: cwd/image.png)
+        text_prompt: prompt to segment from the image
+    Return:
+        ndarray: uint8 type with values 0 or 255
+    '''
 
     logging.info("Starting the SEEM Preview")
     # check the output dir
@@ -114,7 +120,6 @@ def SEEMPreview(input_file:str,output_file:str, text_prompt:str):
 
     logging.info("start the task")
 
-    base_name, _ = os.path.splitext(input_file)
     input_img = Image.open(input_file)
 
     input_img = remove(input_img, bgcolor=(0,0,0,0)).convert('RGB')
@@ -126,8 +131,7 @@ def SEEMPreview(input_file:str,output_file:str, text_prompt:str):
     logging.info("found this class{}".format(pred_class))
 
     mask = cv2.resize(mask, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
-
-    np_input[mask!=1] = 0
+    mask =  mask.astype(np.uint)*255
 
     logging.info("Output results")
-    cv2.imwrite(os.path.join(os.getcwd(), base_name+'.png'), np_input)
+    return mask
