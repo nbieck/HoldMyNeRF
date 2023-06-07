@@ -94,6 +94,7 @@ def run_nerf(params, progress=gr.Progress()):
                         "--n_steps", f"{params[n_steps]}",
                         "--save_snapshot", "snapshot.ingp",
                         "--save_mesh", "model.obj",
+                        "--marching_cubes_res", "128",
                         os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
         progress((4,4), desc="Completed")
@@ -130,6 +131,19 @@ def create_video(params):
     ], cwd=gradio_dir)
 
     return os.path.join(gradio_dir, "video.mp4")
+
+def regen_model_fn(snapshot, resolution):
+    gradio_dir = os.path.dirname(snapshot.name)
+
+    subprocess.run([
+        sys.executable,
+        os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
+        "--load_snapshot", snapshot.name,
+        "--save_mesh", "model.obj",
+        "--marching_cubes_res", f"{resolution}"
+    ], cwd=gradio_dir)
+
+    return os.path.join(gradio_dir, "model.obj")
 
 if __name__ == "__main__":
     #inputs
@@ -172,7 +186,12 @@ if __name__ == "__main__":
                     with gr.Tab("Preview"):
                         segmentation.render()
                     with gr.Tab("Results"):
-                        model.render()
+                        with gr.Box():
+                            model.render()
+                            with gr.Row():
+                                model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0)
+                                regen_model = gr.Button("Regenerate Model")
+                                regen_model.click(fn=regen_model_fn, inputs=[checkpoint_file, model_res], outputs=[model], api_name="regen_model")
                         checkpoint_file.render()
                         intermediates.render()
                         with gr.Box():
