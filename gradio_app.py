@@ -11,7 +11,7 @@ import zipfile
 from seem_extraction import SEEMPipeline, SEEMPreview
 
 HEADER_TEXT = """
-# Hold My NeRF
+# 🍻 Hold My NeRF
 
 ## Instructions
 1. Provide a video of you turning the object to be captured in your hand.
@@ -36,7 +36,6 @@ def get_first_frame(video: str):
         cap = cv2.VideoCapture(video)
         is_read, img = cap.read()
         if is_read:
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             cv2.imwrite(os.path.join(os.path.dirname(video), "first_frame.png"),img)
 
 def preview_segmentation(params):
@@ -48,7 +47,11 @@ def preview_segmentation(params):
     img = os.path.join(gradio_dir, "first_frame.png")
     mask = SEEMPreview(img, params[text_prompt])
 
-    return (img, [(mask, "Mask")])
+    mask = mask.astype(np.float32)
+    mask /= 255.
+    mask *= 0.5
+
+    return (img, [(mask, params[text_prompt])])
 
 def run_nerf(params, progress=gr.Progress()):
     video_file = params[video]
