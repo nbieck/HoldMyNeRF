@@ -8,6 +8,7 @@ import shutil
 import sys
 import commentjson
 import zipfile
+from seem_extraction import SEEMPipeline
 
 HEADER_TEXT = """
 # Hold My NeRF
@@ -45,13 +46,23 @@ def run_nerf(params, progress=gr.Progress()):
 
     with tempfile.TemporaryDirectory() as tempdir:
         shutil.copy2(video_file, tempdir)
-        progress((0,2), desc="Starting COLMAP")
+        progress((0,4), desc="Extracting Frames")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
                         "--video_in", os.path.join(tempdir, video_name),
+                        "--video_fps", str(int(100 / video_length)),
+                        "--overwrite"], cwd=tempdir)
+
+        progress((1,4), desc="Removing Background")
+        masked_dir = os.path.join(tempdir, "masked")
+        SEEMPipeline(os.path.join(tempdir, "images"), masked_dir, params[text_prompt])
+
+        progress((2,4), desc="Running COLMAP")
+        subprocess.run([sys.executable,
+                        os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
+                        "--images", masked_dir,
                         "--run_colmap",
                         "--aabb_scale", "1",
-                        "--video_fps", str(int(100 / video_length)),
                         "--overwrite"], cwd=tempdir)
 
         if params[use_per_image]:
@@ -62,7 +73,7 @@ def run_nerf(params, progress=gr.Progress()):
                 commentjson.dump(data, transforms)
             shutil.copy2(os.path.join(tempdir, "transforms.json"), gradio_dir)
 
-        progress((1,2), desc="Starting NeRF training")
+        progress((3,4), desc="Training NeRF")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
                         "--n_steps", f"{params[n_steps]}",
@@ -70,7 +81,7 @@ def run_nerf(params, progress=gr.Progress()):
                         "--save_mesh", "model.obj",
                         os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
-        progress((2,2), desc="Completed")
+        progress((4,4), desc="Completed")
 
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
