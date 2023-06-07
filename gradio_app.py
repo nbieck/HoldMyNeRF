@@ -8,6 +8,7 @@ import shutil
 import sys
 import commentjson
 import math
+import argparse
 from seem_extraction import SEEMPipeline, SEEMPreview
 from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
@@ -23,6 +24,19 @@ HEADER_TEXT = """
 6. If desired, a video orbit of the object can be rendered from the NeRF directly
 """
 ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--port", "-p", type=int, default=7860)
+
+    public = parser.add_argument_group('public server')
+    public.add_argument("--public", action="store_true", help="Make the server publically accessible. Consider setting authentication if doung so.")
+    public.add_argument("--auth_user", help="Username to authenticate with when running publically accessible. Please provide both username and password, if using authentication.")
+    public.add_argument("--auth_pwd", help="Password to use for authentication. Please provide both username and password, if using authentication.")
+    public.add_argument("--auth_message", help="Message to display on the authentication screen")
+
+    return parser.parse_args()
 
 def get_video_duration(video):
     vid = cv2.VideoCapture(video)
@@ -236,5 +250,12 @@ if __name__ == "__main__":
 
         gr.Examples([["examples/cube_clean.mp4", "cube"]], inputs=[video, text_prompt])
 
+    args = parse_args()
     demo.queue()
-    demo.launch()
+
+    if args.public:
+        demo.launch(server_port=args.port, share=True, 
+                    auth=(args.auth_user, args.auth_pwd) if (args.auth_user and args.auth_pwd) else None,
+                    auth_message=args.auth_message)
+    else:
+        demo.launch(server_port=args.port)
