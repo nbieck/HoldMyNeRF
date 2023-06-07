@@ -77,7 +77,21 @@ def run_nerf(params):
             model:os.path.join(gradio_dir, "model.obj")}
 
 def create_video(params):
-    return None
+    gradio_dir = os.path.dirname(params[checkpoint_file].name)
+
+    subprocess.run([
+        sys.executable,
+        os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
+        "--load_snapshot", params[checkpoint_file].name,
+        "--width", f"{params[video_width]}",
+        "--height", f"{params[video_height]}",
+        "--video_camera_path", os.path.join(ROOT_DIR, "config/camera_path.json"),
+        "--video_fps", f"{params[fps]}",
+        "--video_n_seconds", f"{params[seconds]}",
+        "--video_spp", f"{params[spp]}",
+    ], cwd=gradio_dir)
+
+    return os.path.join(gradio_dir, "video.mp4")
 
 if __name__ == "__main__":
     #inputs
@@ -122,8 +136,16 @@ if __name__ == "__main__":
                         with gr.Box():
                             orbit_video.render()
                             with gr.Accordion("Video Parameters", open=True):
+                                with gr.Row():
+                                    video_width = gr.Number(value=720, label="Width", precision=0)
+                                    video_height = gr.Number(value=480, label="Height", precision=0)
+                                fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
+                                seconds = gr.Number(value=5, label="Video Length", precision=1)
+                                spp = gr.Slider(1,16,8, label="Samples per Pixel")
                                 render_vid = gr.Button("Render Video")
-                                render_vid.click(fn=create_video, inputs={checkpoint_file}, outputs=[orbit_video], api_name="get_video")
+                                render_vid.click(fn=create_video, 
+                                                 inputs={checkpoint_file, video_width, video_height,
+                                                         fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
 
         gr.Examples([["examples/cube_clean.mp4", "cube"]], inputs=[video, text_prompt])
 
