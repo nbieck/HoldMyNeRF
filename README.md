@@ -51,6 +51,14 @@ First off, we'll need a video of the object we want to NeRF. For better results:
 6. Don't rotate the object too fast. Rotating it slowly and covering 360° in under 30s is recommended.
 7. Avoid transparent and reflective objects.
 
+The tips from [COLMAP Tutorial](https://colmap.github.io/tutorial.html) will help at the camera pose estimation step:
+
+1. Capture images with **good texture**. Avoid completely texture-less images (e.g., a white wall or empty desk). If the scene does not contain enough texture itself, you could place additional background objects, such as posters, etc.
+    - Note that we don't care about reconstructing the background since we segment the object, so this applies to the object itself.
+3. Capture images at similar **illumination conditions**. Avoid high dynamic range scenes (e.g., pictures against the sun with shadows or pictures through doors/windows). Avoid specularities on shiny surfaces.
+4. Capture images with **high visual overlap**. Make sure that each object is seen in at least 3 images – the more images the better.
+5. Capture images from **different viewpoints**. Do not take images from the same location by only rotating the camera, e.g., make a few steps after each shot. At the same time, try to have enough images from a relatively similar viewpoint. Note that more images is not necessarily better and might lead to a slow reconstruction process. If you use a video as input, consider down-sampling the frame rate.
+
 Here's a quick example:
 
 ![Good contrast dataset](/docs/imgs/good_contrast.gif)
