@@ -27,9 +27,6 @@ from rembg import remove
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), "dependencies/SEEM/demo_code"))
 
-from seem_extraction import SEEMPipeline
-
-
 from tasks import *
 
 @torch.no_grad()
@@ -43,13 +40,13 @@ def BuildSEEM()-> BaseModel:
     build args
     '''
     # args = parse_option()
-    opt = load_opt_from_config_files('dependencies/SEEM/demo_code/configs/seem/seem_focall_lang.yaml')
+    opt = load_opt_from_config_files('dependencies/SEEM/demo_code/configs/seem/seem_focalt_lang.yaml')
     opt = init_distributed(opt)
 
     # META DATA
-    pretrained_pth = os.path.join("seem_focall_v1.pt")
+    pretrained_pth = os.path.join("seem_focalt_v2.pt")
     if not os.path.exists(pretrained_pth):
-        os.system("wget {}".format("https://projects4jw.blob.core.windows.net/x-decoder/release/seem_focall_v1.pt"))
+        os.system("wget {}".format("https://huggingface.co/xdecoder/SEEM/resolve/main/seem_focalt_v2.pt"))
     cur_model = 'Focal-T'
 
     '''
@@ -67,8 +64,8 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
     rembg, and then use SEEM to segment the object based on the input text_prompt.
     
     Args: 
-        input_dir: Input relative path for input image directory
-        output_dir: Input the relative path for directory to put the segmented image
+        input_dir: Input the absolute path for input image directory
+        output_dir: Input the absolute path for directory to put the segmented image
     '''
 
     logging.info("Starting the SEEM pipeline")
@@ -99,9 +96,38 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
 
                 mask = cv2.resize(mask, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
 
-                np_input[mask==1] = 0
+                np_input[mask!=1] = 0
 
                 logging.info("Output results")
                 cv2.imwrite(os.path.join(out_path, base_name+'.png'), np_input)
             else:
                 logging.warning("Input file included non-file")
+
+
+def SEEMPreview(input_file:str,output_file:str, text_prompt:str):
+
+    logging.info("Starting the SEEM Preview")
+    # check the output dir
+
+    logging.info("Build SEEM")
+    model = BuildSEEM()
+
+    logging.info("start the task")
+
+    base_name, _ = os.path.splitext(input_file)
+    input_img = Image.open(input_file)
+
+    input_img = remove(input_img, bgcolor=(0,0,0,0)).convert('RGB')
+
+    np_input = cv2.imread(input_file)
+    np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
+
+    mask, pred_class = inference(model=model, image=input_img, reftxt=text_prompt)
+    logging.info("found this class{}".format(pred_class))
+
+    mask = cv2.resize(mask, (np_input.shape[1], np_input.shape[0]), interpolation = cv2.INTER_AREA)
+
+    np_input[mask!=1] = 0
+
+    logging.info("Output results")
+    cv2.imwrite(os.path.join(os.getcwd(), base_name+'.png'), np_input)
