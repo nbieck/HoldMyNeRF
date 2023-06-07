@@ -8,7 +8,7 @@ import shutil
 import sys
 import commentjson
 import zipfile
-from seem_extraction import SEEMPipeline
+from seem_extraction import SEEMPipeline, SEEMPreview
 
 HEADER_TEXT = """
 # Hold My NeRF
@@ -31,10 +31,22 @@ def get_video_duration(video):
 
     return frames / fps
 
+def get_first_frame(video: str):
+    if video != "":
+        cap = cv2.VideoCapture(video)
+        is_read, img = cap.read()
+        if is_read:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(os.path.join(os.path.dirname(video), "first_frame.png"),img)
+
 def preview_segmentation(params):
-    img = np.random.random(size=(300,300,3))
-    mask = np.zeros(shape=(300,300))
-    mask[30:40, 30:40] = 1
+    video_file = params[video]
+    gradio_dir = os.path.dirname(gradio_dir)
+
+    get_first_frame(video_file)
+
+    img = os.path.join(gradio_dir, "first_frame.png")
+    mask = SEEMPreview(img, params[text_prompt])
 
     return (img, [(mask, "Mask")])
 
