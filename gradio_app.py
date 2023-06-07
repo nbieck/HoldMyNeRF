@@ -55,7 +55,7 @@ def run_nerf(params):
         print("Training NeRF")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR, "dependencies/instant-ngp/scripts/run.py"),
-                        "--n_steps", "1000",
+                        "--n_steps", f"{params[n_steps]}",
                         "--save_snapshot", "snapshot.ingp",
                         "--save_mesh", "model.obj",
                         os.path.join(tempdir, "transforms.json")], cwd=tempdir)
@@ -92,13 +92,13 @@ if __name__ == "__main__":
                     text_prompt.render()
 
                     with gr.Accordion("NeRF Parameters", open=False):
-                        pass
+                        n_steps = gr.Number(value=10000, label="#Steps", precision=0)
 
                     with gr.Row():
                         preview = gr.Button("Preview Segmentation")
                         preview.click(fn=preview_segmentation, inputs={video, text_prompt}, outputs=[segmentation], api_name="preview")
                         run = gr.Button("Submit")
-                        run.click(fn=run_nerf, inputs={video, text_prompt}, outputs=[model, checkpoint_file], api_name="nerf")
+                        run.click(fn=run_nerf, inputs={video, text_prompt, n_steps}, outputs=[model, checkpoint_file], api_name="nerf")
 
 
             with gr.Column():
