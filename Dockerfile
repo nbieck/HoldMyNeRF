@@ -1,9 +1,8 @@
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
-### === INSTALLS === ###
-
-# Update apt so that new packages can be installed properly. wget for gazebo, dos2unix for line endings fix
+# Update apt-get and install packages
 RUN apt-get update && apt-get install -y --no-install-recommends \ 
+    # Line endings fix:
     dos2unix \
     # instant-ngp requirements:
     gcc \
@@ -20,44 +19,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxinerama-dev \
     libxcursor-dev \
     libxrandr-dev \
+    # Cleanup:
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
 
 # Clone the repo
 RUN git clone https://github.com/nbieck/HoldMyNeRF.git --recurse-submodules app
 
-# ENV CUDAToolkit_ROOT=""
-
 # Build instant-ngp
 WORKDIR /app/dependencies/instant_ngp
 RUN cmake . -B build
-RUN cmake --build build --config RelWithDebInfo -j 8
+# If you get error 137 (insufficient memory), lower the '-j 4' parameter
+RUN cmake --build build --config RelWithDebInfo -j 4
 WORKDIR /app
 
 # Install all python requirements
-COPY req.txt /app
-RUN pip3 install --no-cache-dir -r req.txt
-
-COPY main.py /app
-
-# Set the PATH environment variable
-# ENV PATH="/usr/bin/python3:${PATH}"
-
+RUN pip3 install --no-cache-dir -r requirements.txt
 
 # Install SEEM requirements
-# RUN pip3 install git+https://github.com/arogozhnikov/einops.git
-# RUN pip3 install git+https://github.com/MaureenZOU/detectron2-xyz.git
-# RUN pip3 install git+https://github.com/openai/whisper.git
+RUN pip3 install git+https://github.com/arogozhnikov/einops.git
+RUN pip3 install git+https://github.com/MaureenZOU/detectron2-xyz.git
+RUN pip3 install git+https://github.com/openai/whisper.git
 
-
-### === CLEANUP === ###
-
-# Use dos2unix to convert the line endings, remove dos2unix, then clean up files created by apt-get
-# RUN dos2unix /entrypoint.sh && apt-get --purge remove -y dos2unix && rm -rf /var/lib/apt/lists/*
-
-# Required in Linux systems. Gives proper permissions to entrypoint file.
-# RUN ["chmod", "+x", "/entrypoint.sh"]
-
+# Expose port 7860 for the Gradio app
 EXPOSE 7860
 
-CMD ["python3", "main.py"]
+# Launch the Gradio app
+CMD ["python3", "app.py"]
