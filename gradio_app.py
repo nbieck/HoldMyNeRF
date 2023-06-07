@@ -7,6 +7,7 @@ import os
 import shutil
 import sys
 import commentjson
+import zipfile
 
 HEADER_TEXT = """
 # Hold My NeRF
@@ -37,7 +38,6 @@ def preview_segmentation(params):
     return (img, [(mask, "Mask")])
 
 def run_nerf(params, progress=gr.Progress()):
-
     video_file = params[video]
     video_name = os.path.basename(video_file)
     video_length = get_video_duration(video_file)
@@ -75,6 +75,16 @@ def run_nerf(params, progress=gr.Progress()):
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
 
+        if params[debug_intermediate]:
+            with zipfile.ZipFile(os.path.join(gradio_dir, "intermediates.zip"), "w") as zipf:
+                for root, _, filenames in os.walk(tempdir):
+                    for f in filenames:
+                        zipf.write(os.path.join(root, f))
+
+            return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
+                    model:os.path.join(gradio_dir, "model.obj"),
+                    intermediates:zipf.filename}
+
     return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
             model:os.path.join(gradio_dir, "model.obj")}
 
@@ -107,6 +117,7 @@ if __name__ == "__main__":
     model = gr.Model3D(label="3D Model", interactive=False, clear_color=[0,0,0])
     checkpoint_file = gr.File(label="Instant-NPG Checkpoint", interactive=False)
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
+    intermediates = gr.Files(label="Intermediate Files", interactive=False, visible=False)
 
     with gr.Blocks() as demo:
         gr.Markdown(HEADER_TEXT)
@@ -120,12 +131,14 @@ if __name__ == "__main__":
                     with gr.Accordion("NeRF Parameters", open=False):
                         use_per_image = gr.Checkbox(value=True, label="Per Image Latents")
                         n_steps = gr.Number(value=10000, label="#Steps", precision=0)
+                        debug_intermediate = gr.Checkbox(value=False, label="Save Intermediates")
+                        debug_intermediate.change(fn=lambda dbg: gr.update(visible=dbg), inputs=[debug_intermediate], outputs=[intermediates])
 
                     with gr.Row():
                         preview = gr.Button("Preview Segmentation")
                         preview.click(fn=preview_segmentation, inputs={video, text_prompt}, outputs=[segmentation], api_name="preview")
                         run = gr.Button("Submit")
-                        run.click(fn=run_nerf, inputs={video, text_prompt, n_steps, use_per_image}, outputs=[model, checkpoint_file], api_name="nerf")
+                        run.click(fn=run_nerf, inputs={video, text_prompt, n_steps, use_per_image, debug_intermediate}, outputs=[model, checkpoint_file, intermediates], api_name="nerf")
 
 
             with gr.Column():
@@ -135,6 +148,7 @@ if __name__ == "__main__":
                     with gr.Tab("Results"):
                         model.render()
                         checkpoint_file.render()
+                        intermediates.render()
                         with gr.Box():
                             orbit_video.render()
                             with gr.Accordion("Video Parameters", open=True):
