@@ -12,10 +12,15 @@ __[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presenta
 
 ## Requirements
 
+For a local installation:
 - [instant-ngp requirements](https://github.com/NVlabs/instant-ngp#requirements)
 - [FFmpeg](https://www.ffmpeg.org/)
 
+For installation with Docker containers:
+- [Docker](https://www.docker.com)
 ## Installation
+
+**NOTE:** If you prefer to use Docker, go to the [Docker](#docker) section.
 
 Clone the repo and initialize submodules with
 
@@ -39,6 +44,28 @@ pip install -r r.txt
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
 
 **IMPORTANT** when building `instant-ngp`, ensure that you have the same python environment active as where the requirements were installed.
+
+### Docker
+
+Either clone the repo with
+
+```sh
+git clone https://github.com/nbieck/HoldMyNeRF.git 
+```
+
+or download the `Dockerfile`.
+
+Build the docker image (don't forget the dot `.`):
+
+```sh
+docker build -t hold-my-nerf .
+```
+
+Run the container:
+
+```sh
+docker run -p 7860:7860 --name hold-my-nerf hold-my-nerf
+```
 
 ## Hold your own NeRF
 
@@ -89,4 +116,4 @@ Interesting discoveries during the development of this project that were impleme
 
 ## Acknowledgements
 
-
+Thanks to our Professor Philippe Colantoni for providing guidance and scripts for using SEEM, and to our colleagues for the moral support.
