@@ -40,6 +40,7 @@ def run_nerf(params):
     video_file = params[video]
     video_name = os.path.basename(video_file)
     video_length = get_video_duration(video_file)
+    gradio_dir = os.path.dirname(video_file)
 
     with tempfile.TemporaryDirectory() as tempdir:
         shutil.copy2(video_file, tempdir)
@@ -54,14 +55,16 @@ def run_nerf(params):
         print("Training NeRF")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR, "dependencies/instant-ngp/scripts/run.py"),
-                        "--gui", "false",
                         "--n_steps", "1000",
                         "--save_snapshot", "snapshot.ingp",
                         "--save_mesh", "model.obj",
-                        "--scene", os.path.join(tempdir, "transforms.json")], cwd=tempdir)
+                        os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
-        return {checkpoint_file: os.path.join(tempdir, "snapshot.ingp"), 
-                model:os.path.join(tempdir, "model.obj")}
+        shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
+        shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
+
+    return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
+            model:os.path.join(gradio_dir, "model.obj")}
 
 def create_video(params):
     return None
