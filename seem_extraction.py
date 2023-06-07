@@ -17,6 +17,7 @@ from dependencies.SEEM.demo_code.xdecoder.BaseModel import BaseModel
 from dependencies.SEEM.demo_code.xdecoder import build_model
 from dependencies.SEEM.demo_code.utils.distributed import init_distributed
 from dependencies.SEEM.demo_code.utils.arguments import load_opt_from_config_files
+from dependencies.SEEM.demo_code.utils.constants import COCO_PANOPTIC_CLASSES
 import cv2
 import logging
 
@@ -74,6 +75,7 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
         input_dir: Input relative path for input image directory
         output_dir: Input the relative path for directory to put the segmented image
     '''
+
     logging.info("Starting the SEEM pipeline")
     # check the output dir
 
