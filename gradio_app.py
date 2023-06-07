@@ -36,7 +36,7 @@ def preview_segmentation(params):
 
     return (img, [(mask, "Mask")])
 
-def run_nerf(params):
+def run_nerf(params, progress=gr.Progress()):
 
     video_file = params[video]
     video_name = os.path.basename(video_file)
@@ -45,7 +45,7 @@ def run_nerf(params):
 
     with tempfile.TemporaryDirectory() as tempdir:
         shutil.copy2(video_file, tempdir)
-        print("Running COLMAP")
+        progress((0,2), desc="Starting COLMAP")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
                         "--video_in", os.path.join(tempdir, video_name),
@@ -62,13 +62,15 @@ def run_nerf(params):
                 commentjson.dump(data, transforms)
             shutil.copy2(os.path.join(tempdir, "transforms.json"), gradio_dir)
 
-        print("Training NeRF")
+        progress((1,2), desc="Starting NeRF training")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
                         "--n_steps", f"{params[n_steps]}",
                         "--save_snapshot", "snapshot.ingp",
                         "--save_mesh", "model.obj",
                         os.path.join(tempdir, "transforms.json")], cwd=tempdir)
+
+        progress((2,2), desc="Completed")
 
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
