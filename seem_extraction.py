@@ -78,8 +78,8 @@ def SEEMPipeline(input_dir:str, output_dir:str, text_prompt:str) -> None:
     # check the output dir
 
     logging.info("Find the output directory")
-    os.makedirs(os.getcwd()+output_dir, exist_ok=True)
-    out_path = os.path.join(os.getcwd(), 'output/')
+    os.makedirs(output_dir, exist_ok=True)
+    out_path = output_dir
 
     logging.info("Build SEEM")
     model = BuildSEEM()
