@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libomp-dev \
     libxinerama-dev \
     libxcursor-dev \
+    libxrandr-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
 
@@ -30,7 +31,7 @@ RUN git clone https://github.com/nbieck/HoldMyNeRF.git --recurse-submodules app
 # Build instant-ngp
 WORKDIR /app/dependencies/instant_ngp
 RUN cmake . -B build
-RUN cmake --build build --config RelWithDebInfo -j
+RUN cmake --build build --config RelWithDebInfo -j 8
 WORKDIR /app
 
 # Install all python requirements

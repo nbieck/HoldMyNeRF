@@ -9,6 +9,19 @@ __Imaging and Light in Extended Reality (IMLEX)__
 
 __[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presentation]()__
 
+__Table of contents:__
+- [Requirements](#requirements)
+- [Installation](#installation)
+  - [Docker](#docker)
+- [Hold your own NeRF](#hold-your-own-nerf)
+  - [Recording a dataset](#recording-a-dataset)
+  - [Launching the app](#launching-the-app)
+  - [Using the UI](#using-the-ui)
+- [Examples](#examples)
+- [Future work](#future-work)
+- [Notes](#notes)
+- [Acknowledgements](#acknowledgements)
+
 
 ## Requirements
 
@@ -69,6 +82,10 @@ docker run -p 7860:7860 --name hold-my-nerf hold-my-nerf
 
 ## Hold your own NeRF
 
+This section explains how to create your own NeRF. In other words, here you'll find instructions on recording a dataset (video), launching the app, using the UI, and obtaining the results.
+
+### Recording a dataset
+
 First off, we'll need a video of the object we want to NeRF. For better results:
 
 1. Film with an empty contrasting background.
@@ -98,7 +115,9 @@ Examples of bad videos:
 >GIFS GO HERE (side by side)
 
 
+### Launching the app
 
+### Using the UI
 
 
 ## Examples
