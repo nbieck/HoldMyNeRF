@@ -47,7 +47,7 @@ def run_nerf(params):
         shutil.copy2(video_file, tempdir)
         print("Running COLMAP")
         subprocess.run([sys.executable,
-                        os.path.join(ROOT_DIR,"dependencies/instant-ngp/scripts/colmap2nerf.py"), 
+                        os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
                         "--video_in", os.path.join(tempdir, video_name),
                         "--run_colmap",
                         "--aabb_scale", "1",
@@ -64,7 +64,7 @@ def run_nerf(params):
 
         print("Training NeRF")
         subprocess.run([sys.executable,
-                        os.path.join(ROOT_DIR, "dependencies/instant-ngp/scripts/run.py"),
+                        os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
                         "--n_steps", f"{params[n_steps]}",
                         "--save_snapshot", "snapshot.ingp",
                         "--save_mesh", "model.obj",
