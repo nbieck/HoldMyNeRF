@@ -170,7 +170,7 @@ if __name__ == "__main__":
 
                     with gr.Accordion("NeRF Parameters", open=False):
                         use_per_image = gr.Checkbox(value=True, label="Per Image Latents")
-                        n_steps = gr.Number(value=10000, label="#Steps", precision=0)
+                        n_steps = gr.Number(value=1000, label="#Steps", precision=0)
                         debug_intermediate = gr.Checkbox(value=False, label="Save Intermediates")
                         debug_intermediate.change(fn=lambda dbg: gr.update(visible=dbg), inputs=[debug_intermediate], outputs=[intermediates])
 
