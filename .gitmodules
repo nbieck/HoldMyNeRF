@@ -1,6 +1,6 @@
 [submodule "dependencies/Segment-Everything-Everywhere-All-At-Once"]
-	path = dependencies/Segment-Everything-Everywhere-All-At-Once
+	path = dependencies/SEEM
 	url = https://github.com/UX-Decoder/Segment-Everything-Everywhere-All-At-Once.git
 [submodule "dependencies/instant-ngp"]
-	path = dependencies/instant-ngp
+	path = dependencies/instant_ngp
 	url = https://github.com/NVlabs/instant-ngp.git
