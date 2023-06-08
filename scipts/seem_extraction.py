@@ -32,8 +32,8 @@ def inference(model, image, reftxt, use_rembg):
     with torch.autocast(device_type='cuda', dtype=torch.float16):
         if use_rembg:
             image = remove(image, bgcolor=(0, 0, 0, 0))
-            image = image[:,:,:-1]
 
+        image = image[:,:,:-1]
         mask, pred_class = infer_image(model, image, reftxt)
 
         mask = cv2.resize(
@@ -99,13 +99,15 @@ def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str, use_rembg: b
             if entry.is_file():
                 base_name, _ = os.path.splitext(entry.name)
                 
-                input_img = cv2.imread(entry.path, cv2.COLOR_BGR2RGB)
+                input_img = cv2.imread(entry.path)
+                input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2RGBA)
 
                 mask, pred_class = inference(
                     model=model, image=input_img, reftxt=text_prompt, use_rembg=use_rembg)
                 logging.info("found this class{}".format(pred_class))
 
                 input_img[mask!=255] = 0
+                input_img = cv2.cvtColor(input_img, cv2.COLOR_RGBA2BGRA)
 
                 logging.info("Output results")
                 cv2.imwrite(os.path.join(out_path, base_name+'.png'), input_img)
@@ -133,8 +135,8 @@ def SEEMPreview(input_file: str, text_prompt: str, use_rembg: bool) -> np.ndarra
 
     logging.info("start the task")
 
-    # input_img = Image.open(input_file)
-    input_img = cv2.imread(input_file, cv2.COLOR_BGR2RGB)
+    input_img = cv2.imread(input_file)
+    input_img = cv2.cvtColor(input_img, cv2.COLOR_BGR2RGBA)
 
     mask, pred_class = inference(
         model=model, image=input_img, reftxt=text_prompt, use_rembg=use_rembg)
