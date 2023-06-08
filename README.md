@@ -7,7 +7,7 @@ __Jean Monnet University (UJM)__
 
 __Imaging and Light in Extended Reality (IMLEX)__
 
-__[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;| [Video]()&nbsp;| [Presentation]()__
+__[Code](https://github.com/nbieck/HoldMyNeRF)&nbsp;__
 
 __Table of contents:__
 - [Requirements](#requirements)
