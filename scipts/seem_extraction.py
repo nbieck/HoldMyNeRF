@@ -104,7 +104,7 @@ def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str) -> None:
                     model=model, image=input_img, reftxt=text_prompt)
                 logging.info("found this class{}".format(pred_class))
 
-                input_img[mask!=255]
+                input_img[mask!=255] = 0
 
                 logging.info("Output results")
                 cv2.imwrite(os.path.join(out_path, base_name+'.png'), input_img)
