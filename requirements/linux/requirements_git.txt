@@ -1,0 +1,2 @@
+pip3 install git+https://github.com/arogozhnikov/einops.git
+pip3 install git+https://github.com/MaureenZOU/detectron2-xyz.git 
