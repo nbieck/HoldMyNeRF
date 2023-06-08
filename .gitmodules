@@ -4,3 +4,6 @@
 [submodule "dependencies/instant-ngp"]
 	path = dependencies/instant_ngp
 	url = https://github.com/NVlabs/instant-ngp.git
+[submodule "dependencies/colmap"]
+	path = dependencies/colmap
+	url = https://github.com/colmap/colmap
