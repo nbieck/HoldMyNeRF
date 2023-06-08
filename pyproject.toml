@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "holdmynerf"
+version = "0.1.0"
+description = ""
+authors = ["shiohiyoko <takagif315@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiohttp = "3.8.4\r\raiosignal==1.3.1\r\ranyio==3.6.2\r\rasync-timeout==4.0.2\r\rasyncer==0.0.2\r\rattrs==23.1.0\r\rcertifi==2022.12.7\r\rcharset-normalizer==3.1.0\r\rclick==8.1.3\r\rcolorama==0.4.6\r\rcoloredlogs==15.0.1\r\rfastapi==0.95.1\r\rfiletype==1.2.0\r\rflatbuffers==23.3.3\r\rfrozenlist==1.3.3\r\rh11==0.14.0\r\rhumanfriendly==10.0\r\ridna==3.4\r\rImageHash==4.3.1\r\rimageio==2.28.0\r\rlazy_loader==0.2\r\rllvmlite==0.39.1\r\rmpmath==1.3.0\r\rmultidict==6.0.4\r\rnetworkx==3.1\r\rnumba==0.56.4\r\rnumpy==1.23.5\r\ronnxruntime==1.14.1\r\ropencv-python-headless==4.7.0.72\r\rpackaging==23.1\r\rPillow==9.5.0\r\rplatformdirs==3.5.0\r\rpooch==1.7.0\r\rprotobuf==4.22.3\r\rpydantic==1.10.7\r\rPyMatting==1.1.8\r\rpyreadline3==3.4.1\r\rpython-multipart==0.0.6\r\rPyWavelets==1.4.1\r\rrembg==2.0.35\r\rrequests==2.29.0\r\rscikit-image==0.20.0\r\rscipy==1.10.1\r\rsniffio==1.3.0\r\rstarlette==0.26.1\r\rsympy==1.11.1\r\rtifffile==2023.4.12\r\rtqdm==4.65.0\r\rtyping_extensions==4.5.0\r\rurllib3==1.26.15\r\ruvicorn==0.22.0\r\rwatchdog==3.0.0\r\ryarl==1.9.2\r\rgradio==3.33.1"
+torch = "^2.0.1"
+torchvision = "^0.15.2"
+detectron2 = { git = "https://github.com/facebookresearch/detectron2.git", extra-build-requires = ["torch"]  }
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = [ "setuptools", "wheel", "torch" ]
+build-backend = "setuptools.build_meta:__legacy__"
