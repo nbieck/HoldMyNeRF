@@ -30,8 +30,18 @@ from PIL import Image
 @torch.no_grad()
 def inference(model, image, reftxt):
     with torch.autocast(device_type='cuda', dtype=torch.float16):
-        return infer_image(model, image, reftxt)
+        rmbg_img = remove(image, bgcolor=(0, 0, 0, 0))
+        # rmbg_img = cv2.cvtColor(rmbg_img, cv2.COLOR_RGBA2RGB)
 
+        mask, pred_class = infer_image(model, rmbg_img[:,:,:-1], reftxt)
+
+        mask = cv2.resize(
+            mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_AREA)
+
+        mask = mask.astype(np.uint)*255
+
+        return mask, pred_class
+    
 
 def BuildSEEM() -> BaseModel:
     '''
@@ -87,25 +97,17 @@ def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str) -> None:
             logging.info("open{}".format(entry.path))
             if entry.is_file():
                 base_name, _ = os.path.splitext(entry.name)
-                input_img = Image.open(entry.path)
-
-                input_img = remove(input_img, bgcolor=(
-                    0, 0, 0, 0)).convert('RGB')
-
-                np_input = cv2.imread(entry.path)
-                np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
+                
+                input_img = cv2.imread(entry.path, cv2.COLOR_BGR2RGB)
 
                 mask, pred_class = inference(
                     model=model, image=input_img, reftxt=text_prompt)
                 logging.info("found this class{}".format(pred_class))
 
-                mask = cv2.resize(
-                    mask, (np_input.shape[1], np_input.shape[0]), interpolation=cv2.INTER_AREA)
-
-                np_input[mask != 1] = 0
+                input_img[mask!=255]
 
                 logging.info("Output results")
-                cv2.imwrite(os.path.join(out_path, base_name+'.png'), np_input)
+                cv2.imwrite(os.path.join(out_path, base_name+'.png'), input_img)
             else:
                 logging.warning("Input file included non-file")
 
@@ -130,20 +132,11 @@ def SEEMPreview(input_file: str, text_prompt: str) -> np.ndarray:
 
     logging.info("start the task")
 
-    input_img = Image.open(input_file)
-
-    input_img = remove(input_img, bgcolor=(0, 0, 0, 0)).convert('RGB')
-
-    np_input = cv2.imread(input_file)
-    np_input = cv2.cvtColor(np_input, cv2.COLOR_BGR2BGRA)
+    # input_img = Image.open(input_file)
+    input_img = cv2.imread(input_file, cv2.COLOR_BGR2RGB)
 
     mask, pred_class = inference(
         model=model, image=input_img, reftxt=text_prompt)
     logging.info("found this class{}".format(pred_class))
 
-    mask = cv2.resize(
-        mask, (np_input.shape[1], np_input.shape[0]), interpolation=cv2.INTER_AREA)
-    mask = mask.astype(np.uint)*255
-
-    logging.info("Output results")
     return mask

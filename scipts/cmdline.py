@@ -21,22 +21,15 @@ import subprocess
 from PIL import Image
 import random
 
-t = []
-t.append(transforms.Resize(512, interpolation=Image.BICUBIC))
-transform = transforms.Compose(t)
 all_classes = [name.replace('-other','').replace('-merged','') for name in COCO_PANOPTIC_CLASSES] + ["others"]
 colors_list = [(np.array(color['color'])/255).tolist() for color in COCO_CATEGORIES] + [[1, 1, 1]]
 
 def infer_image(model, input_image, text_prompt):
-    image_ori = transform(input_image)
-    width = image_ori.size[0]
-    height = image_ori.size[1]
-    #print ("image size: ", width, "x",height)
-    image_ori = np.asarray(image_ori)
+    image_ori = cv2.resize(input_image, (512,512), interpolation=cv2.INTER_AREA)
+    width = image_ori.shape[0]
+    height = image_ori.shape[1]
+    image_ori = image_ori
     images = torch.from_numpy(image_ori.copy()).permute(2,0,1).cuda()
-
-    # stroke_inimg = None
-    # stroke_refimg = None
 
     data = {"image": images, "height": height, "width": width}
     
