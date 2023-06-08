@@ -52,12 +52,10 @@ Install Python requirements:
 
 ```sh
 # Windows
-pip install -r requirements/windows/torch.txt
-pip install -r requirements/windows/r.txt
+./requirements_windows.bat
 
 # Linux
-pip install -r requirements/linux/requirements.txt
-pip install -r requirements/linux/requirements_git.txt
+./requirements_linux.sh
 ```
 
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
@@ -154,7 +152,7 @@ If you're using Docker, just run the container:
 docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
 ```
 
-The app can be access through your browser on `localhost:7860`.
+The app can be accessed through your browser on `localhost:7860`.
 
 ### Using the UI
 
