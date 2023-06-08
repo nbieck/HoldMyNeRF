@@ -34,7 +34,8 @@ def parse_args():
     public.add_argument("--public", action="store_true", help="Make the server publically accessible. Consider setting authentication if doung so.")
     public.add_argument("--auth_user", help="Username to authenticate with when running publically accessible. Please provide both username and password, if using authentication.")
     public.add_argument("--auth_pwd", help="Password to use for authentication. Please provide both username and password, if using authentication.")
-    public.add_argument("--auth_message", help="Message to display on the authentication screen")
+    public.add_argument("--auth_message", help="Message to display on the authentication screen.")
+    public.add_argument("--server_name", help="0.0.0.0 to access from outside Docker containers.")
 
     return parser.parse_args()
 
@@ -256,6 +257,7 @@ if __name__ == "__main__":
     if args.public:
         demo.launch(server_port=args.port, share=True, 
                     auth=(args.auth_user, args.auth_pwd) if (args.auth_user and args.auth_pwd) else None,
-                    auth_message=args.auth_message)
+                    auth_message=args.auth_message,
+                    server_name=args.server_name)
     else:
-        demo.launch(server_port=args.port)
+        demo.launch(server_port=args.port, server_name=args.server_name)
