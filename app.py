@@ -152,6 +152,14 @@ def run_nerf(params, progress=gr.Progress()):
     return {nerf_files: [os.path.join(gradio_dir, "snapshot.ingp"), 
             os.path.join(gradio_dir, "model.obj")]}
 
+def create_video_defaults(params):
+    params[video_width] = 720
+    params[video_height] = 480
+    params[fps] = 30
+    params[seconds] = 5
+    params[spp] = 8
+    return create_video(params)
+
 def create_video(params):
     checkpoint_file = [f.name for f in params[nerf_files] if f.name.endswith(".ingp")][0]
     gradio_dir = os.path.dirname(checkpoint_file)
@@ -229,6 +237,11 @@ if __name__ == "__main__":
                                 inputs={intermediates, use_per_image, n_steps},
                                 outputs=[nerf_files],
                                 api_name="run_nerf"
+                            ).then(
+                                fn=create_video_defaults,
+                                inputs={nerf_files},
+                                outputs=[orbit_video],
+                                api_name="default_video"
                             )
 
 
