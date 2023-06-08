@@ -57,13 +57,13 @@ RUN bash env_file.sh && \
 
 # Build instant-ngp. If you get error 137 (insufficient memory), lower the '-j' parameter
 WORKDIR /app/dependencies/instant_ngp
-RUN cmake . -B build
-RUN cmake --build build --config RelWithDebInfo -j 4
+RUN cmake . -B build && \
+    cmake --build build --config RelWithDebInfo -j 4
 
 # Build COLMAP
-ENV CC=/usr/bin/gcc-10
-ENV CXX=/usr/bin/g++-10
-ENV CUDAHOSTCXX=/usr/bin/g++-10
+ENV CC=/usr/bin/gcc-10 \
+    CXX=/usr/bin/g++-10 \
+    CUDAHOSTCXX=/usr/bin/g++-10
 WORKDIR /app/dependencies/colmap
 RUN cmake --version && cmake . -B build -GNinja -D CMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES} && \
     ninja -C build -j 4 && \
@@ -72,12 +72,13 @@ RUN cmake --version && cmake . -B build -GNinja -D CMAKE_CUDA_ARCHITECTURES=${CM
 # Return to app directory
 WORKDIR /app
 
-# Copy the repo
-COPY . .
-
 # Install Python requirements
+ADD requirements /app/requirements
 RUN pip3 install --no-cache-dir -r requirements/linux/requirements.txt && \
     pip3 install --no-cache-dir -r requirements/linux/requirements_git.txt 
+
+# Copy the repo
+COPY . .
 
 # Setup for Gradio
 EXPOSE 7860
