@@ -50,25 +50,34 @@ git submodule update --init --recursive
 Install Python requirements:
 
 ```sh
-pip install -r torch.txt
-pip install -r r.txt
+# Windows
+pip install -r requirements/windows/torch.txt
+pip install -r requirements/windows/r.txt
+
+# Linux
+pip install -r requirements/linux/requirements.txt
+pip install -r requirements/linux/requirements_git.txt
 ```
 
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
 
 **IMPORTANT** when building `instant-ngp`, ensure that you have the same python environment active as where the requirements were installed.
 
+Finally, start the app on `localhost:7860` with:
+
+```sh
+python app.py
+```
+
 ### Docker
 
-Either clone the repo with
+Clone the repo with:
 
 ```sh
 git clone https://github.com/nbieck/HoldMyNeRF.git 
 ```
 
-or download the `Dockerfile`.
-
-Build the docker image (don't forget the dot `.`):
+Build the docker image (don't forget the dot `.`). Be warned that this will take approx. 15min.
 
 ```sh
 docker build -t hold-my-nerf .
@@ -77,8 +86,10 @@ docker build -t hold-my-nerf .
 Run the container:
 
 ```sh
-docker run -p 7860:7860 --name hold-my-nerf hold-my-nerf
+docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf hold-my-nerf
 ```
+
+Access the app on `localhost:7860`.
 
 ## Hold your own NeRF
 
@@ -117,10 +128,53 @@ Examples of bad videos:
 
 ### Launching the app
 
+If you installed locally, you can start the app with 
+
+```sh
+python app.py
+```
+
+If you're using Docker, just run the container:
+
+```sh
+docker run -d --gpus all -p 7860:7860 --name hold-my-nerf hold-my-nerf
+```
+
+The app can be access through your browser on `localhost:7860`.
+
 ### Using the UI
 
+> Tested on a system with NVIDIA GeForce RTX 2060 and AMD Ryzen 7 4800H.
+
+The UI was designed to be intuitive while also giving you a lot of control over the parameters and results. To start, either **upload or drag-and-drop the video you recorded** in section [Recording a dataset](#recording-a-dataset) into the `Video` field. You can also play the video after uploading it.
+
+Next, you'll want to **fill the `Object Label` text box** with a one-word description of the object you recorded. This can be, for example, 'cube', 'bottle', 'flower', etc. **Click on `Preview Segmentation`** to preview what the segmentation does according to your inputs. The preview is shown in the right side, in the `Segmentation` field under the `Preview` tab. If your object didn't get well segmented, try a different label, or record the video again following the tips in [Recording a dataset](#recording-a-dataset).
+
+*Advanced settings: NeRF Parameters.* These settings define the parameters used by `instant-ngp` when generating the NeRF. In other words, this will influence the generation of the 3D representation of your object.
+- Steps: amount of steps to train for. The higher, the longer it'll take to train. Recommended to use `1000` at first and retrain later if necessary.
+
+If everything is set up, **click on `Submit` to start the pipeline**. Be sure to **click on the `Results` tab** on the right to see the progress. For 720p videos and the default parameters, the pipeline takes approx. 10min to finish.
+
+Once the pipeline is done processing, you'll be able to see and download the generated 3D mesh and the `instant-ngp` checkpoint. The download buttons are in the top-right of the output fields (they appear once you hover over them).
+
+*Advanced settings: Marching cubes resolution.* Defines the resolution of the generated 3D mesh. The higher the resolution, the higher the quality and size of the resulting mesh. Too high values might crash the app. Click on `Regenerate Model` to regenerate the mesh.
+
+For a downloadable orbit video of the NeRF, **set the `Video Parameters`** to your preferences and then **click on `Render Video`**.
+- Width and Height: the width and height of the video.
+- FPS: frames per second. 
+- Video Length: the duration of the video, in seconds.
+- Samples per Pixel: the higher this values is, the higher quality will the rendering be.
+  
+*Warning:* be aware that the higher these values, the longer it'll take to render the video. Default settings render the video in under a minute. Too high values might crash the app.
 
 ## Examples
+
+There is also the option of using any of the examples available. Click on one of them to load the example video and its respective label.
+
+The following examples are provided:
+- Rubik's cube (handheld): a Rubik's cube being rotated while handheld. White background. Results in partial reconstruction due to COLMAP failing to match all the frames. This occurs because in many of the frames, the cube has significant holes caused by the segmentation. They are also noticeable in the NeRF.
+
+
 
 ## Future work
 
