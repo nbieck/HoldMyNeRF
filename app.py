@@ -14,6 +14,7 @@ from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
 HEADER_TEXT = """
 # 🍻 Hold My NeRF
+[Code](https://github.com/nbieck/HoldMyNeRF)
 
 ## Instructions
 1. Provide a video of you turning the object to be captured in your hand.
@@ -207,10 +208,10 @@ if __name__ == "__main__":
                     text_prompt.render()
 
                     with gr.Accordion("Run Parameters", open=False):
-                        use_per_image = gr.Checkbox(value=True, label="Per Image Latents")
-                        n_steps = gr.Number(value=1000, label="#Steps", precision=0)
-                        use_rembg = gr.Checkbox(value=True, label="Use rembg")
-                        debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames")
+                        use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
+                        n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
+                        use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
+                        debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
                         debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
 
                     with gr.Row():
@@ -238,7 +239,7 @@ if __name__ == "__main__":
                         with gr.Box():
                             model.render()
                             with gr.Row():
-                                model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0)
+                                model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
                                 regen_model = gr.Button("Regenerate Model")
                                 regen_model.click(fn=regen_model_fn, inputs=[checkpoint_file, model_res], outputs=[model], api_name="regen_model")
                         checkpoint_file.render()
@@ -251,8 +252,8 @@ if __name__ == "__main__":
                                     video_width = gr.Number(value=720, label="Width", precision=0)
                                     video_height = gr.Number(value=480, label="Height", precision=0)
                                 fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
-                                seconds = gr.Number(value=5, label="Video Length", precision=1)
-                                spp = gr.Slider(1,16,8, label="Samples per Pixel")
+                                seconds = gr.Number(value=5, label="Video Length (s)", precision=1)
+                                spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
                                 render_vid = gr.Button("Render Video")
                                 render_vid.click(fn=create_video, 
                                                  inputs={checkpoint_file, video_width, video_height,
