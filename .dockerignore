@@ -1,0 +1,11 @@
+output/**
+venv
+__pycache__
+.vscode/
+datasets/
+model/
+dependencies/
+docs/
+.gitignore
+Dockerfile
+README.md
