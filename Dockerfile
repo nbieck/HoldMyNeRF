@@ -47,18 +47,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
 
-
 # The entire app is installed inside /app
 WORKDIR /app
+COPY env_file.sh .gitmodules /app/
 
-# Copy the repo
-COPY . .
-
-# Assign environment variables
-RUN bash env_file.sh
-
-# Update and initialize submodules
-RUN git submodule update --init --recursive
+# Assign environment variables, update and initialize submodules
+RUN bash env_file.sh && \
+    git submodule update --init --recursive
 
 # Build instant-ngp. If you get error 137 (insufficient memory), lower the '-j' parameter
 WORKDIR /app/dependencies/instant_ngp
@@ -77,10 +72,12 @@ RUN cmake --version && cmake . -B build -GNinja -D CMAKE_CUDA_ARCHITECTURES=${CM
 # Return to app directory
 WORKDIR /app
 
+# Copy the repo
+COPY . .
+
 # Install Python requirements
 RUN pip3 install --no-cache-dir -r requirements/linux/requirements.txt && \
     pip3 install --no-cache-dir -r requirements/linux/requirements_git.txt 
-
 
 # Setup for Gradio
 EXPOSE 7860
