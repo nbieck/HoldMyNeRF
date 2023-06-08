@@ -63,10 +63,11 @@ Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant
 **IMPORTANT** when building `instant-ngp`, ensure that you have the same python environment active as where the requirements were installed.
 
 If on Linux, build `colmap`. Follow the [instructions](https://colmap.github.io/install.html#linux).
-On Windows, building `colmap` is optional, as a compiled binary will automatically be downloaded if necessary. If you want to build it yourself (in order to benefit from GPU
-acceleration, for example), see the [instruction](https://colmap.github.io/install.html#id3).
 
-Finally, start the app on `localhost:7860` with:
+On Windows, building `colmap` is optional, as a compiled binary will automatically be downloaded if necessary. If you want to build it yourself (in order to benefit from GPU
+acceleration, for example), see the [instructions](https://colmap.github.io/install.html#id3).
+
+Finally, start the app on [localhost:7860](http://localhost:7860) with:
 
 ```sh
 python app.py
@@ -92,7 +93,11 @@ Run the container:
 docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
 ```
 
-Access the app on `localhost:7860`.
+Access the app on [localhost:7860](http://localhost:7860).
+
+**Notes on environment variables:** if you have problems concerning the CUDA architecture or insufficient memory, change the environment variables inside `env_file.sh`.
+- `CMAKE_CUDA_ARCHITECTURES=75` supports all GPUs with compute capability of `7.5` or higher (`7.5` is the value for Geforce RTX 2060). If you have an older GPU, you should change this value to your GPU specific value. Check "CUDA-Enabled GeForce and TITAN Products" at https://developer.nvidia.com/cuda-gpus.
+- `CMAKE_NUM_JOBS=4` creates 4 jobs to build `instant-ngp` in parallel. Higher values demand more memory. If you get insufficient memory errors, lower this value.
 
 **Notes on `docker run` arguments:**
 - `rm`: doesn't keep the container around. Allows you to simply execute `docker run` again after shutting off the container.
@@ -100,8 +105,6 @@ Access the app on `localhost:7860`.
 - `-p 7860:7860`: connects the host's port 7860 with the container's. Allows access to the Gradio app.
 - `--name hold-my-nerf`: gives the container a cool name.
 - `-v hold_my_nerf_vol_model:/app/model`: mount the volume at `/app/model`, persisting model checkpoints through container lifecycles. In other words, prevents the container from downloading the checkpoint every time it's booted up. 
-
-**Notes on build process:** if you run out of memory during the build process for `instant-ngp`, open `Dockerfile` and change `-j 4` to a lower value in line 50 (`cmake --build build --config RelWithDebInfo -j 4`).
 
 ## Hold your own NeRF
 
@@ -163,7 +166,9 @@ The UI was designed to be intuitive while also giving you a lot of control over 
 Next, you'll want to **fill the `Object Label` text box** with a one-word description of the object you recorded. This can be, for example, 'cube', 'bottle', 'flower', etc. **Click on `Preview Segmentation`** to preview what the segmentation does according to your inputs. The preview is shown in the right side, in the `Segmentation` field under the `Preview` tab. If your object didn't get well segmented, try a different label, or record the video again following the tips in [Recording a dataset](#recording-a-dataset).
 
 *Advanced settings: NeRF Parameters.* These settings define the parameters used by `instant-ngp` when generating the NeRF. In other words, this will influence the generation of the 3D representation of your object.
-- Steps: amount of steps to train for. The higher, the longer it'll take to train. Recommended to use `1000` at first and retrain later if necessary.
+- Per Image Latents: associates a small embedding factor to each image that's used as an additional input to the network. In other words, makes the model more robust to changes in lighting.
+- #Steps: amount of steps to train for. The higher, the longer it'll take to train. Recommended to use `1000` at first and retrain later if necessary.
+- Show Masked Frames: shows the masked frames that were extracted from the video and processed. Useful for checking if all frames were segmented correctly.
 
 If everything is set up, **click on `Submit` to start the pipeline**. Be sure to **click on the `Results` tab** on the right to see the progress. For 720p videos and the default parameters, the pipeline takes approx. 10min to finish.
 
@@ -191,6 +196,11 @@ The following examples are provided:
 ## Future work
 
 - [ ] Implement [blind image inpainting](https://arxiv.org/abs/2003.06816#:~:text=Blind%20inpainting%20is%20a%20task,missing%20areas%20in%20an%20image.) into the pipeline.
+- [ ] Get funding for Hugging Face deployment.
+- [ ] Add toggle buttons for switching between segmentation strategies: 
+  - [ ] rembg + SEEM;
+  - [ ] SEEM only;
+  - [ ] segmenting background and hands instead of the object.
 
 ## Notes
 
