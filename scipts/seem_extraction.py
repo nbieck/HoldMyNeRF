@@ -7,20 +7,21 @@
 
 import os
 import sys
-sys.path.append(os.path.join(os.path.dirname(
-    __file__), "dependencies/SEEM/demo_code"))
+ROOT_PATH = os.path.dirname(os.path.dirname(__file__))
+#needed for some internal imports in SEEM to work
+sys.path.append(os.path.join(ROOT_PATH, "dependencies/SEEM/demo_code"))
 
-from tasks import *
 import numpy as np
 from rembg import remove
 from config.cmdline import infer_image
 import logging
 import cv2
-from dependencies.SEEM.demo_code.utils.constants import COCO_PANOPTIC_CLASSES
-from dependencies.SEEM.demo_code.utils.arguments import load_opt_from_config_files
-from dependencies.SEEM.demo_code.utils.distributed import init_distributed
-from dependencies.SEEM.demo_code.xdecoder import build_model
-from dependencies.SEEM.demo_code.xdecoder.BaseModel import BaseModel
+sys.path.append(os.path.join(ROOT_PATH, "dependencies"))
+from SEEM.demo_code.utils.constants import COCO_PANOPTIC_CLASSES
+from SEEM.demo_code.utils.arguments import load_opt_from_config_files
+from SEEM.demo_code.utils.distributed import init_distributed
+from SEEM.demo_code.xdecoder import build_model
+from SEEM.demo_code.xdecoder.BaseModel import BaseModel
 import torch
 from PIL import Image
 

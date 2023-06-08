@@ -9,7 +9,7 @@ import sys
 import commentjson
 import math
 import argparse
-from seem_extraction import SEEMPipeline, SEEMPreview
+from scipts.seem_extraction import SEEMPipeline, SEEMPreview
 from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
 HEADER_TEXT = """
