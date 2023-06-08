@@ -190,7 +190,7 @@ if __name__ == "__main__":
     segmentation = gr.AnnotatedImage(label="Segmentation")
 
     #outputs
-    model = gr.Model3D(label="3D Model", interactive=False, clear_color=[0,0,0])
+    model = gr.Model3D(label="3D Model", interactive=False, clear_color=[0,0,0, 0.0])
     checkpoint_file = gr.File(label="Instant-NPG Checkpoint", interactive=False)
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
     masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False)
