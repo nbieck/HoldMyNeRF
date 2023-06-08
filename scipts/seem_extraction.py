@@ -8,15 +8,15 @@
 import os
 import sys
 ROOT_PATH = os.path.dirname(os.path.dirname(__file__))
-#needed for some internal imports in SEEM to work
+#needed for some internal imports in SEEM to function
 sys.path.append(os.path.join(ROOT_PATH, "dependencies/SEEM/demo_code"))
+sys.path.append(os.path.join(ROOT_PATH, "dependencies"))
 
 import numpy as np
 from rembg import remove
-from config.cmdline import infer_image
+from .cmdline import infer_image
 import logging
 import cv2
-sys.path.append(os.path.join(ROOT_PATH, "dependencies"))
 from SEEM.demo_code.utils.constants import COCO_PANOPTIC_CLASSES
 from SEEM.demo_code.utils.arguments import load_opt_from_config_files
 from SEEM.demo_code.utils.distributed import init_distributed
