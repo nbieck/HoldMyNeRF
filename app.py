@@ -67,7 +67,7 @@ def preview_segmentation(params):
     get_first_frame(video_file)
 
     img = os.path.join(gradio_dir, "first_frame.png")
-    mask = SEEMPreview(img, params[text_prompt])
+    mask = SEEMPreview(img, params[text_prompt], params[use_rembg])
 
     mask = mask.astype(np.float32)
     mask /= 255.
@@ -98,7 +98,7 @@ def mask_frames(params, progress=gr.Progress()):
 
         progress((1,4), desc="Removing Background")
         masked_dir = os.path.join(tempdir, "masked")
-        SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt])
+        SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt], params[use_rembg])
 
         shutil.copytree(masked_dir, os.path.join(gradio_dir, "masked"), dirs_exist_ok=True)
 
@@ -206,19 +206,20 @@ if __name__ == "__main__":
                     video.render()
                     text_prompt.render()
 
-                    with gr.Accordion("NeRF Parameters", open=False):
+                    with gr.Accordion("Run Parameters", open=False):
                         use_per_image = gr.Checkbox(value=True, label="Per Image Latents")
                         n_steps = gr.Number(value=1000, label="#Steps", precision=0)
+                        use_rembg = gr.Checkbox(value=True, label="Use rembg")
                         debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames")
                         debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
 
                     with gr.Row():
                         preview = gr.Button("Preview Segmentation")
-                        preview.click(fn=preview_segmentation, inputs={video, text_prompt}, outputs=[segmentation], api_name="preview")
+                        preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
                         run = gr.Button("Submit")
                         run.click(
                                 fn=mask_frames, 
-                                inputs={video, text_prompt}, 
+                                inputs={video, text_prompt, use_rembg}, 
                                 outputs=[masked_images, intermediates, model, checkpoint_file], 
                                 api_name="mask_frames"
                             ).then(

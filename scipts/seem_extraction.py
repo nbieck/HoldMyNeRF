@@ -28,12 +28,13 @@ from PIL import Image
 
 
 @torch.no_grad()
-def inference(model, image, reftxt):
+def inference(model, image, reftxt, use_rembg):
     with torch.autocast(device_type='cuda', dtype=torch.float16):
-        rmbg_img = remove(image, bgcolor=(0, 0, 0, 0))
-        # rmbg_img = cv2.cvtColor(rmbg_img, cv2.COLOR_RGBA2RGB)
+        if use_rembg:
+            image = remove(image, bgcolor=(0, 0, 0, 0))
+            image = image[:,:,:-1]
 
-        mask, pred_class = infer_image(model, rmbg_img[:,:,:-1], reftxt)
+        mask, pred_class = infer_image(model, image, reftxt)
 
         mask = cv2.resize(
             mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_AREA)
@@ -71,7 +72,7 @@ def BuildSEEM() -> BaseModel:
     return model
 
 
-def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str) -> None:
+def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str, use_rembg: bool) -> None:
     '''
     Main function for preprocessing section. This code will segment the background with
     rembg, and then use SEEM to segment the object based on the input text_prompt.
@@ -101,7 +102,7 @@ def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str) -> None:
                 input_img = cv2.imread(entry.path, cv2.COLOR_BGR2RGB)
 
                 mask, pred_class = inference(
-                    model=model, image=input_img, reftxt=text_prompt)
+                    model=model, image=input_img, reftxt=text_prompt, use_rembg=use_rembg)
                 logging.info("found this class{}".format(pred_class))
 
                 input_img[mask!=255] = 0
@@ -112,7 +113,7 @@ def SEEMPipeline(input_dir: str, output_dir: str, text_prompt: str) -> None:
                 logging.warning("Input file included non-file")
 
 
-def SEEMPreview(input_file: str, text_prompt: str) -> np.ndarray:
+def SEEMPreview(input_file: str, text_prompt: str, use_rembg: bool) -> np.ndarray:
     '''
     This function allows the preview of the current picture.
     You can use this to see if the masking is working with the prompt you are using.
@@ -136,7 +137,7 @@ def SEEMPreview(input_file: str, text_prompt: str) -> np.ndarray:
     input_img = cv2.imread(input_file, cv2.COLOR_BGR2RGB)
 
     mask, pred_class = inference(
-        model=model, image=input_img, reftxt=text_prompt)
+        model=model, image=input_img, reftxt=text_prompt, use_rembg=use_rembg)
     logging.info("found this class{}".format(pred_class))
 
     return mask

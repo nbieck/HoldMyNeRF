@@ -165,9 +165,10 @@ The UI was designed to be intuitive while also giving you a lot of control over 
 
 Next, you'll want to **fill the `Object Label` text box** with a one-word description of the object you recorded. This can be, for example, 'cube', 'bottle', 'flower', etc. **Click on `Preview Segmentation`** to preview what the segmentation does according to your inputs. The preview is shown in the right side, in the `Segmentation` field under the `Preview` tab. If your object didn't get well segmented, try a different label, or record the video again following the tips in [Recording a dataset](#recording-a-dataset).
 
-*Advanced settings: NeRF Parameters.* These settings define the parameters used by `instant-ngp` when generating the NeRF. In other words, this will influence the generation of the 3D representation of your object.
+*Advanced settings: Run Parameters.* These settings define the parameters used by `instant-ngp` when generating the NeRF. In other words, this will influence the generation of the 3D representation of your object.
 - Per Image Latents: associates a small embedding factor to each image that's used as an additional input to the network. In other words, makes the model more robust to changes in lighting.
 - #Steps: amount of steps to train for. The higher, the longer it'll take to train. Recommended to use `1000` at first and retrain later if necessary.
+- Use rembg: Remove background before segmentation. This can either improve or worsen results, depending on the dataset.
 - Show Masked Frames: shows the masked frames that were extracted from the video and processed. Useful for checking if all frames were segmented correctly.
 
 If everything is set up, **click on `Submit` to start the pipeline**. Be sure to **click on the `Results` tab** on the right to see the progress. For 720p videos and the default parameters, the pipeline takes approx. 10min to finish.
