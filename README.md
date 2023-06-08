@@ -90,7 +90,7 @@ docker build -t hold-my-nerf .
 Run the container:
 
 ```sh
-docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
+docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net:/root/.u2net/u2net.onnx
 ```
 
 Access the app on [localhost:7860](http://localhost:7860).
@@ -152,7 +152,7 @@ python app.py
 If you're using Docker, just run the container:
 
 ```sh
-docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
+docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net:/root/.u2net/u2net.onnx hold-my-nerf
 ```
 
 The app can be accessed through your browser on `localhost:7860`.
