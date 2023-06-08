@@ -149,16 +149,17 @@ def run_nerf(params, progress=gr.Progress()):
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
 
-    return {checkpoint_file: os.path.join(gradio_dir, "snapshot.ingp"), 
-            model:os.path.join(gradio_dir, "model.obj")}
+    return {nerf_files: [os.path.join(gradio_dir, "snapshot.ingp"), 
+            os.path.join(gradio_dir, "model.obj")]}
 
 def create_video(params):
-    gradio_dir = os.path.dirname(params[checkpoint_file].name)
+    checkpoint_file = [f.name for f in params[nerf_files] if f.name.endswith(".ingp")][0]
+    gradio_dir = os.path.dirname(checkpoint_file)
 
     subprocess.run([
         sys.executable,
         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
-        "--load_snapshot", params[checkpoint_file].name,
+        "--load_snapshot", checkpoint_file,
         "--width", f"{params[video_width]}",
         "--height", f"{params[video_height]}",
         "--video_camera_path", os.path.join(ROOT_DIR, "config/camera_path.json"),
@@ -169,18 +170,19 @@ def create_video(params):
 
     return os.path.join(gradio_dir, "video.mp4")
 
-def regen_model_fn(snapshot, resolution):
-    gradio_dir = os.path.dirname(snapshot.name)
+def regen_model_fn(files, resolution):
+    snapshot = [f.name for f in files if f.name.endswith(".ingp")][0]
+    gradio_dir = os.path.dirname(snapshot)
 
     subprocess.run([
         sys.executable,
         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
-        "--load_snapshot", snapshot.name,
+        "--load_snapshot", snapshot,
         "--save_mesh", "model.obj",
         "--marching_cubes_res", f"{resolution}"
     ], cwd=gradio_dir)
 
-    return os.path.join(gradio_dir, "model.obj")
+    return [os.path.join(gradio_dir, "model.obj"), snapshot]
 
 if __name__ == "__main__":
     #inputs
@@ -191,8 +193,7 @@ if __name__ == "__main__":
     segmentation = gr.AnnotatedImage(label="Segmentation")
 
     #outputs
-    model = gr.Model3D(label="3D Model", interactive=False, clear_color=[0,0,0, 0.0])
-    checkpoint_file = gr.File(label="Instant-NPG Checkpoint", interactive=False)
+    nerf_files = gr.File(label="Instant-NPG output", interactive=False, file_count="multiple")
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
     masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False)
     masked_images.style(preview=True)
@@ -221,12 +222,12 @@ if __name__ == "__main__":
                         run.click(
                                 fn=mask_frames, 
                                 inputs={video, text_prompt, use_rembg}, 
-                                outputs=[masked_images, intermediates, model, checkpoint_file], 
+                                outputs=[masked_images, intermediates, nerf_files], 
                                 api_name="mask_frames"
                             ).then(
                                 fn=run_nerf,
                                 inputs={intermediates, use_per_image, n_steps},
-                                outputs=[model, checkpoint_file],
+                                outputs=[nerf_files],
                                 api_name="run_nerf"
                             )
 
@@ -237,12 +238,11 @@ if __name__ == "__main__":
                         segmentation.render()
                     with gr.Tab("Results"):
                         with gr.Box():
-                            model.render()
                             with gr.Row():
                                 model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
                                 regen_model = gr.Button("Regenerate Model")
-                                regen_model.click(fn=regen_model_fn, inputs=[checkpoint_file, model_res], outputs=[model], api_name="regen_model")
-                        checkpoint_file.render()
+                                regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[nerf_files], api_name="regen_model")
+                        nerf_files.render()
                         intermediates.render()
                         masked_images.render()
                         with gr.Box():
@@ -256,7 +256,7 @@ if __name__ == "__main__":
                                 spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
                                 render_vid = gr.Button("Render Video")
                                 render_vid.click(fn=create_video, 
-                                                 inputs={checkpoint_file, video_width, video_height,
+                                                 inputs={nerf_files, video_width, video_height,
                                                          fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
 
         gr.Examples([["examples/cube_clean.mp4", "cube"]], inputs=[video, text_prompt])
