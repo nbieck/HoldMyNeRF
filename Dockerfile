@@ -24,6 +24,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrandr-dev \
     # For downloading SEEM checkpoint:
     wget \
+    # Required for video to image, and rendering video:
+    ffmpeg \
     # Cleanup:
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
