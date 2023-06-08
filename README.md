@@ -28,6 +28,7 @@ __Table of contents:__
 For a local installation:
 - [instant-ngp requirements](https://github.com/NVlabs/instant-ngp#requirements)
 - [FFmpeg](https://www.ffmpeg.org/)
+- [colmap requirements](https://colmap.github.io/install.html#build-from-source) (only mandatory on Linux)
 
 For installation with Docker containers:
 - [Docker](https://www.docker.com)
@@ -62,6 +63,10 @@ pip install -r requirements/linux/requirements_git.txt
 Now, you'll need to build `instant-ngp`. Follow the [instructions in the instant-ngp repository](https://github.com/NVlabs/instant-ngp#building-instant-ngp-windows--linux).
 
 **IMPORTANT** when building `instant-ngp`, ensure that you have the same python environment active as where the requirements were installed.
+
+If on Linux, build `colmap`. Follow the [instructions](https://colmap.github.io/install.html#linux).
+On Windows, building `colmap` is optional, as a compiled binary will automatically be downloaded if necessary. If you want to build it yourself (in order to benefit from GPU
+acceleration, for example), see the [instruction](https://colmap.github.io/install.html#id3).
 
 Finally, start the app on `localhost:7860` with:
 
