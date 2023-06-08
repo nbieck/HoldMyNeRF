@@ -54,7 +54,13 @@ def get_first_frame(video: str):
         if is_read:
             cv2.imwrite(os.path.join(os.path.dirname(video), "first_frame.png"),img)
 
+def check_input_present_or_raise(params):
+    if not params[video] or not params[text_prompt]:
+        raise gr.Error("Please provide both a video and a text prompt.")
+
 def preview_segmentation(params):
+    check_input_present_or_raise(params)
+
     video_file = params[video]
     gradio_dir = os.path.dirname(video_file)
 
@@ -73,6 +79,8 @@ def preview_segmentation(params):
 Object = lambda **kwargs: type("Object", (), kwargs)()
 
 def mask_frames(params, progress=gr.Progress()):
+    check_input_present_or_raise(params)
+
     video_file = params[video]
     video_name = os.path.basename(video_file)
     video_length = get_video_duration(video_file)
