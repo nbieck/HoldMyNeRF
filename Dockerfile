@@ -1,6 +1,7 @@
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
-WORKDIR /app
+# Create a volume to persist model checkpoints
+VOLUME /app/model
 
 # Update apt-get and install packages
 RUN apt-get update && apt-get install -y --no-install-recommends \ 
@@ -27,23 +28,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
 
+# The entire app is installed inside /app
+WORKDIR /app
+
 # Copy and install Python requirements
-COPY requirements /app/
-RUN pip3 install --no-cache-dir \ 
-    -r ./requirements/linux/requirements.txt \
-    -r ./requirements/linux/requirements_git.txt 
+ADD requirements requirements
+RUN pip3 install --no-cache-dir -r requirements/linux/requirements.txt && \
+    pip3 install --no-cache-dir -r requirements/linux/requirements_git.txt 
 
 # Copy the repo
-COPY . /app/
+COPY . .
 
 # Update and initialize submodules
 RUN git submodule update --init --recursive
 
-# Build instant-ngp
+# Build instant-ngp. If you get error 137 (insufficient memory), lower the '-j 4' parameter
 WORKDIR /app/dependencies/instant_ngp
-RUN cmake . -B build
-# If you get error 137 (insufficient memory), lower the '-j 4' parameter
-RUN cmake --build build --config RelWithDebInfo -j 4
+RUN cmake . -B build && \
+    cmake --build build --config RelWithDebInfo -j 4
 
 # Setup for Gradio
 EXPOSE 7860
