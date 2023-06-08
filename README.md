@@ -98,6 +98,8 @@ Access the app on `localhost:7860`.
 - `--name hold-my-nerf`: gives the container a cool name.
 - `-v hold_my_nerf_vol_model:/app/model`: mount the volume at `/app/model`, persisting model checkpoints through container lifecycles. In other words, prevents the container from downloading the checkpoint every time it's booted up. 
 
+**Notes on build process:** if you run out of memory during the build process for `instant-ngp`, open `Dockerfile` and change `-j 4` to a lower value in line 50 (`cmake --build build --config RelWithDebInfo -j 4`).
+
 ## Hold your own NeRF
 
 This section explains how to create your own NeRF. In other words, here you'll find instructions on recording a dataset (video), launching the app, using the UI, and obtaining the results.
