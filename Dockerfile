@@ -1,7 +1,7 @@
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
-# Create a volume to persist model checkpoints
-VOLUME /app/model
+# Create volumes to persist model checkpoints. This is for documentation: use the -v tag to actually mount the volumes in docker run.
+VOLUME /app/model /root/.u2net/
 
 # Update apt-get and install packages
 RUN apt-get update && apt-get install -y --no-install-recommends \ 

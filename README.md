@@ -86,10 +86,17 @@ docker build -t hold-my-nerf .
 Run the container:
 
 ```sh
-docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf hold-my-nerf
+docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
 ```
 
 Access the app on `localhost:7860`.
+
+**Notes on `docker run` arguments:**
+- `rm`: doesn't keep the container around. Allows you to simply execute `docker run` again after shutting off the container.
+- `--gpus all`: enables GPU use inside the container. Required for CUDA.
+- `-p 7860:7860`: connects the host's port 7860 with the container's. Allows access to the Gradio app.
+- `--name hold-my-nerf`: gives the container a cool name.
+- `-v hold_my_nerf_vol_model:/app/model`: mount the volume at `/app/model`, persisting model checkpoints through container lifecycles. In other words, prevents the container from downloading the checkpoint every time it's booted up. 
 
 ## Hold your own NeRF
 
@@ -137,7 +144,7 @@ python app.py
 If you're using Docker, just run the container:
 
 ```sh
-docker run -d --gpus all -p 7860:7860 --name hold-my-nerf hold-my-nerf
+docker run --rm --gpus all -p 7860:7860 --name hold-my-nerf -v hold_my_nerf_vol_model:/app/model -v hold_my_nerf_vol_u2net hold-my-nerf
 ```
 
 The app can be access through your browser on `localhost:7860`.
