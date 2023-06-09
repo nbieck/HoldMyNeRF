@@ -50,6 +50,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # The entire app is installed inside /app
 WORKDIR /app
 COPY env_file.sh .gitmodules /app/
+ADD .git /app/.git
 
 # Assign environment variables, update and initialize submodules
 RUN bash env_file.sh && \
