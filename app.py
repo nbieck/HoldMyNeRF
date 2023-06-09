@@ -272,7 +272,8 @@ if __name__ == "__main__":
                                                  inputs={nerf_files, video_width, video_height,
                                                          fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
 
-        gr.Examples([["examples/cube_clean.mp4", "cube"]], inputs=[video, text_prompt])
+        gr.Examples([["examples/cube_clean.mp4", "cube"],
+                     ["examples/flower_handheld.mp4", "flower"]], inputs=[video, text_prompt])
 
     args = parse_args()
     demo.queue()
