@@ -204,12 +204,15 @@ The following examples are provided:
 - Flower (handheld): a small flower rotated while handheld. White background. Results in a good reconstruction 90% of the time.
 
 ![Cube video](/docs/imgs/cube_video.gif) ![Flower video](/docs/imgs/flower_video.gif) 
+
 *Input video*
 
 ![Cube render](/docs/imgs/cube_render.gif)  ![Flower render](/docs/imgs/flower_render.gif)
+
 *Rendered NeRF orbit video*
 
 ![Cube mesh](/docs/imgs/cube_mesh.png) ![Flower mesh](/docs/imgs/flower_mesh.png)
+
 *3D Mesh*
 
 ## Future work
