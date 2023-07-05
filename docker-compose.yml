@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: hold-my-nerf
+    build: .
+    command: python3 app.py --server_name 0.0.0.0
+    volumes:
+      - model:/app/model
+      - u2net:/root/.u2net
+    ports:
+      - "7860:7860"
+    deploy:
+      # equivalent of `--gpus all`
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [ gpu ]
+
+volumes:
+  model:
+    name: hold_my_nerf_seem_ckpt
+  u2net:
+    name: hold_my_nerf_u2net_ckpt
