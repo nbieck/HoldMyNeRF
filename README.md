@@ -203,17 +203,17 @@ The following examples are provided:
 - Rubik's cube (handheld): a Rubik's cube being rotated while handheld. White background. Results in partial reconstruction due to COLMAP failing to match all the frames. This occurs because in many of the frames, the cube has significant holes caused by the segmentation. They are also noticeable in the NeRF.
 - Flower (handheld): a small flower rotated while handheld. White background. Results in a good reconstruction 90% of the time.
 
+*Input videos:*
+
 ![Cube video](/docs/imgs/cube_video.gif) ![Flower video](/docs/imgs/flower_video.gif) 
 
-*Input video*
+*Rendered NeRF orbit videos:*
 
 ![Cube render](/docs/imgs/cube_render.gif)  ![Flower render](/docs/imgs/flower_render.gif)
 
-*Rendered NeRF orbit video*
+*3D Mesh:*
 
 ![Cube mesh](/docs/imgs/cube_mesh.png) ![Flower mesh](/docs/imgs/flower_mesh.png)
-
-*3D Mesh*
 
 ## Future work
 
