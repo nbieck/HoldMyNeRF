@@ -9,3 +9,6 @@ docs/
 .gitignore
 Dockerfile
 README.md
+requirements/windows/
+requirements_windows.bat
+.dockerignore

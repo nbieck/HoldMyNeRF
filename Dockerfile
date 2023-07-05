@@ -1,7 +1,14 @@
 FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
 
+# Build arguments. Change these according to Troubleshooting in README.md.
+ARG CUDA_ARCHITECTURES=75
+ARG NUM_JOBS=4
+
 # Create volumes to persist model checkpoints. This is for documentation: use the -v tag to actually mount the volumes in docker run.
 VOLUME /app/model /root/.u2net/
+
+# Prevent stop building ubuntu at time zone selection (from COLMAP Dockerfile).  
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Update apt-get and install packages
 RUN apt-get update && apt-get install -y --no-install-recommends \ 
@@ -21,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxcursor-dev \
     libxrandr-dev \
     # COLMAP requirements:
+    # gcc-10 and g++-10 required for ubuntu22.04
     gcc-10 g++-10 \
     ninja-build \
     libboost-program-options-dev \
@@ -39,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libqt5opengl5-dev \
     libcgal-dev \
     libceres-dev \
+    nvidia-container-toolkit \
     # For downloading SEEM checkpoint:
     wget \
     # Required for video to image, and rendering video:
@@ -49,26 +58,29 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # The entire app is installed inside /app
 WORKDIR /app
-COPY env_file.sh .gitmodules /app/
+COPY .gitmodules /app/
 ADD .git /app/.git
 
-# Assign environment variables, update and initialize submodules
-RUN bash env_file.sh && \
-    git submodule update --init --recursive
+# Update and initialize submodules
+RUN git submodule update --init --recursive
 
 # Build instant-ngp. If you get error 137 (insufficient memory), lower the '-j' parameter
 WORKDIR /app/dependencies/instant_ngp
 RUN cmake . -B build && \
-    cmake --build build --config RelWithDebInfo -j 4
+    cmake --build build --config RelWithDebInfo -j ${NUM_JOBS}
 
 # Build COLMAP
-ENV CC=/usr/bin/gcc-10 \
+WORKDIR /app/dependencies/colmap
+ENV QT_XCB_GL_INTEGRATION=xcb_egl \
+    CC=/usr/bin/gcc-10 \
     CXX=/usr/bin/g++-10 \
     CUDAHOSTCXX=/usr/bin/g++-10
-WORKDIR /app/dependencies/colmap
-RUN cmake --version && cmake . -B build -GNinja -D CMAKE_CUDA_ARCHITECTURES=${CMAKE_CUDA_ARCHITECTURES} && \
-    ninja -C build -j 4 && \
-    ninja -C build install
+RUN mkdir build && \
+    cd build && \
+    cmake .. -GNinja -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} && \
+    ninja -j ${NUM_JOBS} && \
+    ninja install && \
+    cd .. && rm -rf colmap
 
 # Return to app directory
 WORKDIR /app
