@@ -9,6 +9,7 @@ import sys
 import commentjson
 import math
 import argparse
+import logging
 from scipts.seem_extraction import SEEMPipeline, SEEMPreview
 from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
@@ -60,12 +61,18 @@ def check_input_present_or_raise(params):
         raise gr.Error("Please provide both a video and a text prompt.")
 
 def preview_segmentation(params):
+    print("a")
+
     check_input_present_or_raise(params)
+
+    print("b")
 
     video_file = params[video]
     gradio_dir = os.path.dirname(video_file)
 
     get_first_frame(video_file)
+
+    print("c")
 
     img = os.path.join(gradio_dir, "first_frame.png")
     mask = SEEMPreview(img, params[text_prompt], params[use_rembg])
@@ -89,7 +96,7 @@ def mask_frames(params, progress=gr.Progress()):
 
     with tempfile.TemporaryDirectory() as tempdir:
         shutil.copy2(video_file, tempdir)
-        progress((0,4), desc="Extracting Frames")
+        progress((0,5), desc="Extracting Frames")
         run_ffmpeg(Object(
             overwrite=True, 
             images=os.path.join(tempdir, "frames"),
@@ -97,33 +104,82 @@ def mask_frames(params, progress=gr.Progress()):
             video_fps=math.ceil(100 / video_length),
             time_slice=None))
 
-        progress((1,4), desc="Removing Background")
+        progress((1,5), desc="Removing Background")
         masked_dir = os.path.join(tempdir, "masked")
         SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt], params[use_rembg])
 
         shutil.copytree(masked_dir, os.path.join(gradio_dir, "masked"), dirs_exist_ok=True)
 
-        zipf = shutil.make_archive(os.path.join(gradio_dir, "intermediates"), "zip", masked_dir, masked_dir)
+        zipf = shutil.make_archive(os.path.join(gradio_dir, "intermediates"), "zip", masked_dir)
         with os.scandir(os.path.join(gradio_dir, "masked")) as it:
             images = [f.path for f in it if f.is_file()]
 
-        return {intermediates: zipf,
+        print("Masked")
+
+        return {intermediates: [zipf],
                 masked_images: images}
 
 
 def run_nerf(params, progress=gr.Progress()):
-    intermediates_zip = params[intermediates]
+    print("RUNNING NERF")
+
+    intermediates_zip = params[intermediates][0]
     gradio_dir = os.path.dirname(intermediates_zip.name)
 
     with tempfile.TemporaryDirectory() as tempdir:
         masked_dir = os.path.join(tempdir, "masked")
         shutil.unpack_archive(intermediates_zip.name, masked_dir)
 
-        progress((2,4), desc="Running COLMAP")
+        progress((2,5), desc="Running COLMAP")
+        subprocess.run(["COLMAP.bat",
+                        "feature_extractor",
+                        "--ImageReader.camera_model", "OPENCV",
+                        "--SiftExtraction.estimate_affine_shape=true",
+                        "--SiftExtraction.domain_size_pooling=true",
+                        "--ImageReader.single_camera", "1",
+                        "--ImageReader.camera_params", "",
+                        "--database_path", "colmap.db",
+                        "--image_path", masked_dir], cwd=tempdir, check=True)
+        matcher = "sequential"
+        if (params[exhaustive_match]):
+            matcher = "exhaustive"
+        subprocess.run(["COLMAP.bat",
+                        f"{matcher}_matcher",
+                        "SiftMatching.guided_matching=true",
+                        "--database_path", "colmap.db"], cwd=tempdir, check=True)
+
+
+        os.mkdir(os.path.join(tempdir, "sparse"))
+        if (params[glomap]):
+            subprocess.run(["glomap",
+                            "mapper",
+                            "--database_path", "colmap.db",
+                            "--image_path", masked_dir,
+                            "--output_path", "sparse"], cwd=tempdir, check=True)
+        else:
+            subprocess.run(["COLMAP.bat",
+                            "mapper",
+                            "--database_path", "colmap.db",
+                            "--image_path", masked_dir,
+                            "--output_path", "sparse"], cwd=tempdir, check=True);
+            subprocess.run(["COLMAP.bat",
+                            "bundle_adjuster",
+                            "--input_path", "sparse/0",
+                            "--output_path", "sparse/0",
+                            "--BundleAdjustment.refine_principal_point", "1"], cwd=tempdir, check=True)
+
+        os.mkdir(os.path.join(tempdir, "text"))
+        subprocess.run(["COLMAP.bat",
+                        "model_converter",
+                        "--input_path", "sparse/0",
+                        "--output_path", "text",
+                        "--output_type", "TXT"], cwd=tempdir, check=True)
+
+        progress((3,5), desc="Extracting camera data")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
                         "--images", masked_dir,
-                        "--run_colmap",
+                        "--text", "text",
                         "--aabb_scale", "1",
                         "--overwrite"], cwd=tempdir)
 
@@ -135,7 +191,7 @@ def run_nerf(params, progress=gr.Progress()):
                 commentjson.dump(data, transforms)
             shutil.copy2(os.path.join(tempdir, "transforms.json"), gradio_dir)
 
-        progress((3,4), desc="Training NeRF")
+        progress((4,5), desc="Training NeRF")
         subprocess.run([sys.executable,
                         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
                         "--n_steps", f"{params[n_steps]}",
@@ -144,13 +200,17 @@ def run_nerf(params, progress=gr.Progress()):
                         "--marching_cubes_res", "128",
                         os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
-        progress((4,4), desc="Completed")
+        progress((5,5), desc="Completed")
 
         shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
         shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
 
+        zipf = shutil.make_archive(os.path.join(gradio_dir, "colmap"), "zip", tempdir)
+
+        print("NERF DONE")
+
     return {nerf_files: [os.path.join(gradio_dir, "snapshot.ingp"), 
-            os.path.join(gradio_dir, "model.obj")]}
+            os.path.join(gradio_dir, "model.obj"), zipf]}
 
 def create_video_defaults(params):
     params[video_width] = 720
@@ -193,8 +253,9 @@ def regen_model_fn(files, resolution):
     return [os.path.join(gradio_dir, "model.obj"), snapshot]
 
 if __name__ == "__main__":
+    logging.basicConfig(stream = sys.stdout)
     #inputs
-    video = gr.Video(format="mp4", source="upload", label="Video", interactive=True)
+    video = gr.Video(format="mp4", sources=["upload"], label="Video", interactive=True)
     text_prompt = gr.Textbox(label="Object Label", info="Provide a label for the object for segmentation", interactive=True)
 
     #segmentation preview
@@ -203,8 +264,7 @@ if __name__ == "__main__":
     #outputs
     nerf_files = gr.File(label="Instant-NPG output", interactive=False, file_count="multiple")
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
-    masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False)
-    masked_images.style(preview=True)
+    masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False, preview=True)
     intermediates = gr.Files(label="Intermediate Files", interactive=False, visible=False)
 
     with gr.Blocks() as demo:
@@ -212,65 +272,64 @@ if __name__ == "__main__":
 
         with gr.Row():
             with gr.Column():
-                with gr.Box():
-                    video.render()
-                    text_prompt.render()
+                video.render()
+                text_prompt.render()
 
-                    with gr.Accordion("Run Parameters", open=False):
-                        use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
-                        n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
-                        use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
-                        debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
-                        debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
+                with gr.Accordion("Run Parameters", open=False):
+                    use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
+                    n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
+                    use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
+                    exhaustive_match = gr.Checkbox(value=False, label="Use exhaustive feature matcher")
+                    glomap = gr.Checkbox(value=False, label="Use GLOMAP")
+                    debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
+                    debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
 
-                    with gr.Row():
-                        preview = gr.Button("Preview Segmentation")
-                        preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
-                        run = gr.Button("Submit")
-                        run.click(
-                                fn=mask_frames, 
-                                inputs={video, text_prompt, use_rembg}, 
-                                outputs=[masked_images, intermediates, nerf_files], 
-                                api_name="mask_frames"
-                            ).then(
-                                fn=run_nerf,
-                                inputs={intermediates, use_per_image, n_steps},
-                                outputs=[nerf_files],
-                                api_name="run_nerf"
-                            ).then(
-                                fn=create_video_defaults,
-                                inputs={nerf_files},
-                                outputs=[orbit_video],
-                                api_name="default_video"
-                            )
-
+                with gr.Row():
+                    preview = gr.Button("Preview Segmentation")
+                    preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
+                    run = gr.Button("Submit")
+                    run.click(
+                            fn=mask_frames, 
+                            inputs={video, text_prompt, use_rembg}, 
+                            outputs=[masked_images, intermediates, nerf_files], 
+                            api_name="mask_frames"
+                        ).then(
+                            fn=run_nerf,
+                            inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap},
+                            outputs=[nerf_files],
+                            api_name="run_nerf"
+                        ).then(
+                            fn=create_video_defaults,
+                            inputs={nerf_files},
+                            outputs=[orbit_video],
+                            api_name="default_video"
+                        )
 
             with gr.Column():
-                with gr.Box():
-                    with gr.Tab("Preview"):
-                        segmentation.render()
-                    with gr.Tab("Results"):
-                        with gr.Box():
+                with gr.Tab("Preview"):
+                    segmentation.render()
+                with gr.Tab("Results"):
+                    with gr.Column():
+                        with gr.Row():
+                            model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
+                            regen_model = gr.Button("Regenerate Model")
+                            regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[nerf_files], api_name="regen_model")
+                    nerf_files.render()
+                    intermediates.render()
+                    masked_images.render()
+                    with gr.Column():
+                        orbit_video.render()
+                        with gr.Accordion("Video Parameters", open=True):
                             with gr.Row():
-                                model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
-                                regen_model = gr.Button("Regenerate Model")
-                                regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[nerf_files], api_name="regen_model")
-                        nerf_files.render()
-                        intermediates.render()
-                        masked_images.render()
-                        with gr.Box():
-                            orbit_video.render()
-                            with gr.Accordion("Video Parameters", open=True):
-                                with gr.Row():
-                                    video_width = gr.Number(value=720, label="Width", precision=0)
-                                    video_height = gr.Number(value=480, label="Height", precision=0)
-                                fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
-                                seconds = gr.Number(value=5, label="Video Length (s)", precision=1)
-                                spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
-                                render_vid = gr.Button("Render Video")
-                                render_vid.click(fn=create_video, 
-                                                 inputs={nerf_files, video_width, video_height,
-                                                         fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
+                                video_width = gr.Number(value=720, label="Width", precision=0)
+                                video_height = gr.Number(value=480, label="Height", precision=0)
+                            fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
+                            seconds = gr.Number(value=5, label="Video Length (s)", precision=1)
+                            spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
+                            render_vid = gr.Button("Render Video")
+                            render_vid.click(fn=create_video, 
+                                                inputs={nerf_files, video_width, video_height,
+                                                        fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
 
         gr.Examples([["examples/cube_clean.mp4", "cube"],
                      ["examples/flower_handheld.mp4", "flower"]], inputs=[video, text_prompt])
