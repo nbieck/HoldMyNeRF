@@ -92,125 +92,131 @@ def mask_frames(params, progress=gr.Progress()):
     video_file = params[video]
     video_name = os.path.basename(video_file)
     video_length = get_video_duration(video_file)
-    gradio_dir = os.path.dirname(video_file)
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        shutil.copy2(video_file, tempdir)
-        progress((0,5), desc="Extracting Frames")
-        run_ffmpeg(Object(
-            overwrite=True, 
-            images=os.path.join(tempdir, "frames"),
-            video_in=os.path.join(tempdir, video_name),
-            video_fps=math.ceil(100 / video_length),
-            time_slice=None))
 
-        progress((1,5), desc="Removing Background")
-        masked_dir = os.path.join(tempdir, "masked")
-        SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt], params[use_rembg])
+    tempdir = tempfile.mkdtemp(prefix="HMN")
 
-        shutil.copytree(masked_dir, os.path.join(gradio_dir, "masked"), dirs_exist_ok=True)
+    shutil.copy2(video_file, tempdir)
+    progress((0,5), desc="Extracting Frames")
+    run_ffmpeg(Object(
+        overwrite=True, 
+        images=os.path.join(tempdir, "frames"),
+        video_in=os.path.join(tempdir, video_name),
+        video_fps=(params[num_frames] / video_length),
+        time_slice=None))
 
-        zipf = shutil.make_archive(os.path.join(gradio_dir, "intermediates"), "zip", masked_dir)
-        with os.scandir(os.path.join(gradio_dir, "masked")) as it:
-            images = [f.path for f in it if f.is_file()]
+    progress((1,5), desc="Removing Background")
+    masked_dir = os.path.join(tempdir, "masked")
+    SEEMPipeline(os.path.join(tempdir, "frames"), masked_dir, params[text_prompt], params[use_rembg])
 
-        print("Masked")
 
-        return {intermediates: [zipf],
-                masked_images: images}
+    zipf = shutil.make_archive(os.path.join(tempdir, "intermediates"), "zip", masked_dir)
+    with os.scandir(os.path.join(tempdir, "masked")) as it:
+        images = [f.path for f in it if f.is_file()]
+
+    print("Masked")
+
+    return {intermediates: [zipf],
+            masked_images: images}
 
 
 def run_nerf(params, progress=gr.Progress()):
     print("RUNNING NERF")
+    print(params)
 
     intermediates_zip = params[intermediates][0]
-    gradio_dir = os.path.dirname(intermediates_zip.name)
 
-    with tempfile.TemporaryDirectory() as tempdir:
-        masked_dir = os.path.join(tempdir, "masked")
-        shutil.unpack_archive(intermediates_zip.name, masked_dir)
+    tempdir = tempfile.mkdtemp(prefix="HMN", suffix="nerf")
 
-        progress((2,5), desc="Running COLMAP")
-        subprocess.run(["COLMAP.bat",
-                        "feature_extractor",
-                        "--ImageReader.camera_model", "OPENCV",
-                        "--SiftExtraction.estimate_affine_shape=true",
-                        "--SiftExtraction.domain_size_pooling=true",
-                        "--ImageReader.single_camera", "1",
-                        "--ImageReader.camera_params", "",
+    masked_dir = os.path.join(tempdir, "masked")
+    shutil.unpack_archive(intermediates_zip.name, masked_dir)
+
+    progress((2,5), desc="Running COLMAP")
+    subprocess.run(["COLMAP.bat",
+                    "feature_extractor",
+                    "--ImageReader.camera_model", "OPENCV",
+                    "--SiftExtraction.estimate_affine_shape=true",
+                    "--SiftExtraction.domain_size_pooling=true",
+                    "--ImageReader.single_camera", "1",
+                    "--ImageReader.camera_params", "",
+                    "--database_path", "colmap.db",
+                    "--image_path", masked_dir], cwd=tempdir, check=True)
+    matcher = "sequential"
+    if (params[exhaustive_match]):
+        matcher = "exhaustive"
+    subprocess.run(["COLMAP.bat",
+                    f"{matcher}_matcher",
+                    "SiftMatching.guided_matching=true",
+                    "--database_path", "colmap.db"], cwd=tempdir, check=True)
+
+
+    os.mkdir(os.path.join(tempdir, "sparse"))
+    if (params[glomap]):
+        subprocess.run(["glomap",
+                        "mapper",
                         "--database_path", "colmap.db",
-                        "--image_path", masked_dir], cwd=tempdir, check=True)
-        matcher = "sequential"
-        if (params[exhaustive_match]):
-            matcher = "exhaustive"
+                        "--image_path", masked_dir,
+                        "--output_path", "sparse"], cwd=tempdir, check=True)
+    else:
         subprocess.run(["COLMAP.bat",
-                        f"{matcher}_matcher",
-                        "SiftMatching.guided_matching=true",
-                        "--database_path", "colmap.db"], cwd=tempdir, check=True)
-
-
-        os.mkdir(os.path.join(tempdir, "sparse"))
-        if (params[glomap]):
-            subprocess.run(["glomap",
-                            "mapper",
-                            "--database_path", "colmap.db",
-                            "--image_path", masked_dir,
-                            "--output_path", "sparse"], cwd=tempdir, check=True)
-        else:
-            subprocess.run(["COLMAP.bat",
-                            "mapper",
-                            "--database_path", "colmap.db",
-                            "--image_path", masked_dir,
-                            "--output_path", "sparse"], cwd=tempdir, check=True);
-            subprocess.run(["COLMAP.bat",
-                            "bundle_adjuster",
-                            "--input_path", "sparse/0",
-                            "--output_path", "sparse/0",
-                            "--BundleAdjustment.refine_principal_point", "1"], cwd=tempdir, check=True)
-
-        os.mkdir(os.path.join(tempdir, "text"))
+                        "mapper",
+                        "--database_path", "colmap.db",
+                        "--image_path", masked_dir,
+                        "--output_path", "sparse",
+                        "--Mapper.init_num_trials", str(params[num_colmap_trials]),
+                        "--Mapper.max_reg_trials", str(params[num_reg_trials])], cwd=tempdir, check=True);
         subprocess.run(["COLMAP.bat",
-                        "model_converter",
+                        "bundle_adjuster",
                         "--input_path", "sparse/0",
-                        "--output_path", "text",
-                        "--output_type", "TXT"], cwd=tempdir, check=True)
+                        "--output_path", "sparse/0",
+                        "--BundleAdjustment.refine_principal_point", "1"], cwd=tempdir, check=True)
 
-        progress((3,5), desc="Extracting camera data")
-        subprocess.run([sys.executable,
-                        os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
-                        "--images", masked_dir,
-                        "--text", "text",
-                        "--aabb_scale", "1",
-                        "--overwrite"], cwd=tempdir)
+    os.mkdir(os.path.join(tempdir, "text"))
+    subprocess.run(["COLMAP.bat",
+                    "model_converter",
+                    "--input_path", "sparse/0",
+                    "--output_path", "text",
+                    "--output_type", "TXT"], cwd=tempdir, check=True)
 
-        if params[use_per_image]:
-            with open(os.path.join(tempdir, "transforms.json"), "r") as transforms:
-                data = commentjson.load(transforms)
-            data["n_extra_learnable_dims"] = 16
-            with open(os.path.join(tempdir, "transforms.json"), "w") as transforms:
-                commentjson.dump(data, transforms)
-            shutil.copy2(os.path.join(tempdir, "transforms.json"), gradio_dir)
+    progress((3,5), desc="Extracting camera data")
+    subprocess.run([sys.executable,
+                    os.path.join(ROOT_DIR,"dependencies/instant_ngp/scripts/colmap2nerf.py"), 
+                    "--images", masked_dir,
+                    "--text", "text",
+                    "--aabb_scale", "1",
+                    "--overwrite"], cwd=tempdir)
 
-        progress((4,5), desc="Training NeRF")
-        subprocess.run([sys.executable,
-                        os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
-                        "--n_steps", f"{params[n_steps]}",
-                        "--save_snapshot", "snapshot.ingp",
-                        "--save_mesh", "model.obj",
-                        "--marching_cubes_res", "128",
-                        os.path.join(tempdir, "transforms.json")], cwd=tempdir)
+    if params[use_per_image]:
+        with open(os.path.join(tempdir, "transforms.json"), "r") as transforms:
+            data = commentjson.load(transforms)
+        data["n_extra_learnable_dims"] = 16
+        with open(os.path.join(tempdir, "transforms.json"), "w") as transforms:
+            commentjson.dump(data, transforms)
 
-        progress((5,5), desc="Completed")
+    progress((4,5), desc="Training NeRF")
+    subprocess.run([sys.executable,
+                    os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
+                    "--n_steps", f"{params[n_steps]}",
+                    "--save_snapshot", "snapshot.ingp",
+                    "--save_mesh", "model.obj",
+                    "--marching_cubes_res", "128",
+                    os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
-        shutil.copy2(os.path.join(tempdir, "snapshot.ingp"), gradio_dir)
-        shutil.copy2(os.path.join(tempdir, "model.obj"), gradio_dir)
+    progress((5,5), desc="Completed")
 
-        zipf = shutil.make_archive(os.path.join(gradio_dir, "colmap"), "zip", tempdir)
+    zipdir = os.path.join(tempdir, "zip")
+    os.mkdir(zipdir)
+    shutil.copytree(os.path.join(tempdir, "sparse"), os.path.join(zipdir, "sparse"))
+    shutil.copytree(os.path.join(tempdir, "text"), os.path.join(zipdir, "text"))
+    shutil.copy2(os.path.join(tempdir, "colmap.db"), zipdir)
+    colmap_data = shutil.make_archive(os.path.join(tempdir, "colmap"), "zip", zipdir)
+    shutil.rmtree(zipdir)
 
-        print("NERF DONE")
+    print("NERF DONE")
 
-    return {nerf_files: [os.path.join(gradio_dir, "snapshot.ingp"), 
-            os.path.join(gradio_dir, "model.obj"), zipf]}
+    return {nerf_files: [os.path.join(tempdir, "snapshot.ingp"), 
+            os.path.join(tempdir, "model.obj"),
+            colmap_data]}
 
 def create_video_defaults(params):
     params[video_width] = 720
@@ -223,6 +229,10 @@ def create_video_defaults(params):
 def create_video(params):
     checkpoint_file = [f.name for f in params[nerf_files] if f.name.endswith(".ingp")][0]
     gradio_dir = os.path.dirname(checkpoint_file)
+    videofile = os.path.join(gradio_dir, "video.mp4")
+
+    if os.path.isfile(videofile):
+        os.remove(videofile)
 
     subprocess.run([
         sys.executable,
@@ -236,7 +246,7 @@ def create_video(params):
         "--video_spp", f"{params[spp]}",
     ], cwd=gradio_dir)
 
-    return os.path.join(gradio_dir, "video.mp4")
+    return videofile
 
 def regen_model_fn(files, resolution):
     snapshot = [f.name for f in files if f.name.endswith(".ingp")][0]
@@ -275,27 +285,34 @@ if __name__ == "__main__":
                 video.render()
                 text_prompt.render()
 
-                with gr.Accordion("Run Parameters", open=False):
-                    use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
-                    n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
-                    use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
-                    exhaustive_match = gr.Checkbox(value=False, label="Use exhaustive feature matcher")
-                    glomap = gr.Checkbox(value=False, label="Use GLOMAP")
-                    debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
-                    debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
+                with gr.Accordion("Parameters", open=False):
+                    with gr.Tab("BG Parameters"):
+                        use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
+                        num_frames = gr.Slider(minimum=20, maximum=200, step=1, value=100, label="Number of frames")
+                        debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
+                        debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
+                    with gr.Tab("COLMAP Params"):
+                        exhaustive_match = gr.Checkbox(value=False, label="Use exhaustive feature matcher")
+                        glomap = gr.Checkbox(value=False, label="Use GLOMAP")
+                        num_colmap_trials = gr.Slider(minimum=200, maximum=500, step=10, label="COLMAP trials")
+                        num_reg_trials = gr.Slider(minimum=3, maximum=20, step=1, label="Max registration trials")
+                    with gr.Tab("NERF Params"):
+                        use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
+                        n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
 
                 with gr.Row():
                     preview = gr.Button("Preview Segmentation")
                     preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
                     run = gr.Button("Submit")
-                    run.click(
-                            fn=mask_frames, 
-                            inputs={video, text_prompt, use_rembg}, 
+                    run.click(fn=lambda: [None]*4,
+                            outputs=[masked_images, intermediates, nerf_files, orbit_video]
+                        ).then(fn=mask_frames, 
+                            inputs={video, text_prompt, use_rembg, num_frames}, 
                             outputs=[masked_images, intermediates, nerf_files], 
                             api_name="mask_frames"
                         ).then(
                             fn=run_nerf,
-                            inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap},
+                            inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap, num_colmap_trials, num_reg_trials},
                             outputs=[nerf_files],
                             api_name="run_nerf"
                         ).then(
