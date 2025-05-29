@@ -7,3 +7,6 @@
 [submodule "dependencies/colmap"]
 	path = dependencies/colmap
 	url = https://github.com/colmap/colmap
+[submodule "dependencies/hloc"]
+	path = dependencies/hloc
+	url = https://github.com/cvg/Hierarchical-Localization.git
