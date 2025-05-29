@@ -30,11 +30,12 @@ from PIL import Image
 @torch.no_grad()
 def inference(model, image, reftxt, use_rembg):
     with torch.autocast(device_type='cuda', dtype=torch.float16):
-        if use_rembg:
-            image = remove(image, bgcolor=(0, 0, 0, 0))
 
         image = image[:,:,:-1]
         mask, pred_class = infer_image(model, image, reftxt)
+
+        if use_rembg:
+            image = remove(image, bgcolor=(0, 0, 0, 0))
 
         mask = cv2.resize(
             mask, (image.shape[1], image.shape[0]), interpolation=cv2.INTER_AREA)

@@ -214,9 +214,8 @@ def run_nerf(params, progress=gr.Progress()):
 
     print("NERF DONE")
 
-    return {nerf_files: [os.path.join(tempdir, "snapshot.ingp"), 
-            os.path.join(tempdir, "model.obj"),
-            colmap_data]}
+    return {nerf_files: [os.path.join(tempdir, "snapshot.ingp"), colmap_data],
+            model: os.path.join(tempdir, "model.obj")}
 
 def create_video_defaults(params):
     params[video_width] = 720
@@ -260,7 +259,7 @@ def regen_model_fn(files, resolution):
         "--marching_cubes_res", f"{resolution}"
     ], cwd=gradio_dir)
 
-    return [os.path.join(gradio_dir, "model.obj"), snapshot]
+    return os.path.join(gradio_dir, "model.obj")
 
 if __name__ == "__main__":
     logging.basicConfig(stream = sys.stdout)
@@ -274,6 +273,7 @@ if __name__ == "__main__":
     #outputs
     nerf_files = gr.File(label="Instant-NPG output", interactive=False, file_count="multiple")
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
+    model = gr.Model3D(label="Model", interactive=False, display_mode="solid", clear_color=(0,0,0,0))
     masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False, preview=True)
     intermediates = gr.Files(label="Intermediate Files", interactive=False, visible=False)
 
@@ -313,7 +313,7 @@ if __name__ == "__main__":
                         ).then(
                             fn=run_nerf,
                             inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap, num_colmap_trials, num_reg_trials},
-                            outputs=[nerf_files],
+                            outputs=[nerf_files, model],
                             api_name="run_nerf"
                         ).then(
                             fn=create_video_defaults,
@@ -326,15 +326,15 @@ if __name__ == "__main__":
                 with gr.Tab("Preview"):
                     segmentation.render()
                 with gr.Tab("Results"):
-                    with gr.Column():
-                        with gr.Row():
-                            model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
-                            regen_model = gr.Button("Regenerate Model")
-                            regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[nerf_files], api_name="regen_model")
+                    with gr.Row():
+                        model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
+                        regen_model = gr.Button("Regenerate Model")
+                        regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[model], api_name="regen_model")
                     nerf_files.render()
                     intermediates.render()
                     masked_images.render()
                     with gr.Column():
+                        model.render()
                         orbit_video.render()
                         with gr.Accordion("Video Parameters", open=True):
                             with gr.Row():
