@@ -8,8 +8,11 @@ import shutil
 import sys
 import commentjson
 import math
+from dependencies.hloc.hloc import extract_features, pairs_from_exhaustive, match_features, reconstruction, triangulation
+import pycolmap
 import argparse
 import logging
+from pathlib import Path
 from scipts.seem_extraction import SEEMPipeline, SEEMPreview
 from dependencies.instant_ngp.scripts.colmap2nerf import run_ffmpeg
 
@@ -119,6 +122,10 @@ def mask_frames(params, progress=gr.Progress()):
     return {intermediates: [zipf],
             masked_images: images}
 
+FEATURE_ALGORITHMS = [
+    "COLMAP",
+    "SuperPoint+LightGlue"
+]
 
 def run_nerf(params, progress=gr.Progress()):
     print("RUNNING NERF")
@@ -131,23 +138,41 @@ def run_nerf(params, progress=gr.Progress()):
     masked_dir = os.path.join(tempdir, "masked")
     shutil.unpack_archive(intermediates_zip.name, masked_dir)
 
-    progress((2,5), desc="Running COLMAP")
-    subprocess.run(["COLMAP.bat",
-                    "feature_extractor",
-                    "--ImageReader.camera_model", "OPENCV",
-                    "--SiftExtraction.estimate_affine_shape=true",
-                    "--SiftExtraction.domain_size_pooling=true",
-                    "--ImageReader.single_camera", "1",
-                    "--ImageReader.camera_params", "",
-                    "--database_path", "colmap.db",
-                    "--image_path", masked_dir], cwd=tempdir, check=True)
-    matcher = "sequential"
-    if (params[exhaustive_match]):
-        matcher = "exhaustive"
-    subprocess.run(["COLMAP.bat",
-                    f"{matcher}_matcher",
-                    "SiftMatching.guided_matching=true",
-                    "--database_path", "colmap.db"], cwd=tempdir, check=True)
+    progress((2,5), desc="Reconstruction")
+    if params[features] == "SuperPoint+LightGlue":
+        pairs = Path(os.path.join(tempdir, "pairs"))
+        feats = Path(os.path.join(tempdir, "features.h5"))
+        matches = Path(os.path.join(tempdir, "matches.h5"))
+        db = Path(os.path.join(tempdir, "colmap.db"))
+
+        extract_features.main(extract_features.confs["superpoint_aachen"],
+                              Path(masked_dir),
+                              Path(tempdir),
+                              feature_path=feats)
+        pairs_from_exhaustive.main(pairs,
+                                        features=feats)
+        match_features.main(match_features.confs["superpoint+lightglue"],
+                                 pairs, feats, matches=matches)
+        
+        reconstruction.create_empty_db(db)
+        reconstruction.import_images(Path(masked_dir), db, pycolmap.CameraMode.SINGLE)
+        image_ids = reconstruction.get_image_ids(db)
+        triangulation.import_features(image_ids, db, feats)
+        triangulation.import_matches(image_ids, db, pairs, matches, skip_geometric_verification=True)
+    else:
+        subprocess.run(["COLMAP.bat",
+                        "feature_extractor",
+                        "--ImageReader.camera_model", "OPENCV",
+                        "--SiftExtraction.estimate_affine_shape=true",
+                        "--SiftExtraction.domain_size_pooling=true",
+                        "--ImageReader.single_camera", "1",
+                        "--ImageReader.camera_params", "",
+                        "--database_path", "colmap.db",
+                        "--image_path", masked_dir], cwd=tempdir, check=True)
+        subprocess.run(["COLMAP.bat",
+                        "sequential_matcher",
+                        "SiftMatching.guided_matching=true",
+                        "--database_path", "colmap.db"], cwd=tempdir, check=True)
 
 
     os.mkdir(os.path.join(tempdir, "sparse"))
@@ -291,7 +316,7 @@ if __name__ == "__main__":
                         use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
                         num_frames = gr.Slider(minimum=20, maximum=200, step=1, value=100, label="Number of frames")
                     with gr.Tab("COLMAP Params"):
-                        exhaustive_match = gr.Checkbox(value=False, label="Use exhaustive feature matcher")
+                        features = gr.Dropdown(choices=FEATURE_ALGORITHMS, label="Feature Extractor+Matcher", multiselect=False)
                         glomap = gr.Checkbox(value=False, label="Use GLOMAP")
                         num_colmap_trials = gr.Slider(minimum=200, maximum=500, step=10, label="COLMAP trials")
                         num_reg_trials = gr.Slider(minimum=3, maximum=20, step=1, label="Max registration trials")
@@ -306,7 +331,7 @@ if __name__ == "__main__":
                     run.click(fn=lambda: [None]*4,
                             outputs=[masked_images, intermediates, nerf_files, orbit_video]
                         ).success(
-                            inputs = {use_rembg, num_frames, exhaustive_match, glomap, num_colmap_trials, num_reg_trials, use_per_image, n_steps},
+                            inputs = {use_rembg, num_frames, features, glomap, num_colmap_trials, num_reg_trials, use_per_image, n_steps},
                             outputs=settings,
                             api_name="save_settings",
                             fn = lambda par: "```\n" + "\n".join([comp.label + ": " + f"{value}" for (comp, value) in par.items()]) + "\n```"
@@ -316,7 +341,7 @@ if __name__ == "__main__":
                             api_name="mask_frames"
                         ).success(
                             fn=run_nerf,
-                            inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap, num_colmap_trials, num_reg_trials},
+                            inputs={intermediates, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials},
                             outputs=[nerf_files, model],
                             api_name="run_nerf"
                         ).success(
@@ -338,7 +363,7 @@ if __name__ == "__main__":
                     with gr.Accordion("Parameters"):
                         settings.render()
 
-                    with gr.Accordion("Frames"):
+                    with gr.Accordion("Frames", open=False):
                         intermediates.render()
                         masked_images.render()
 

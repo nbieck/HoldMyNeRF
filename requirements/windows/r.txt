@@ -9,3 +9,4 @@ transformers
 nltk
 rembg
 git+https://github.com/MaureenZOU/detectron2-xyz.git
+onnxruntime
