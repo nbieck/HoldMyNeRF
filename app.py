@@ -274,8 +274,9 @@ if __name__ == "__main__":
     nerf_files = gr.File(label="Instant-NPG output", interactive=False, file_count="multiple")
     orbit_video = gr.Video(label="Orbit Video", interactive=False)
     model = gr.Model3D(label="Model", interactive=False, display_mode="solid", clear_color=(0,0,0,0))
-    masked_images = gr.Gallery(label="Masked Frames", interactive=False, visible=False, preview=True)
-    intermediates = gr.Files(label="Intermediate Files", interactive=False, visible=False)
+    masked_images = gr.Gallery(label="Masked Frames", interactive=False, preview=True)
+    intermediates = gr.Files(label="Intermediate Files", interactive=False)
+    settings = gr.Markdown(label="Run Settings")
 
     with gr.Blocks() as demo:
         gr.Markdown(HEADER_TEXT)
@@ -289,8 +290,6 @@ if __name__ == "__main__":
                     with gr.Tab("BG Parameters"):
                         use_rembg = gr.Checkbox(value=True, label="Use rembg", info="Remove background before segmenting. Can improve or worsen performance.")
                         num_frames = gr.Slider(minimum=20, maximum=200, step=1, value=100, label="Number of frames")
-                        debug_intermediate = gr.Checkbox(value=False, label="Show Masked Frames", info="Displays all frames used to train NeRF after the object is masked out.")
-                        debug_intermediate.change(fn=lambda dbg: (gr.update(visible=dbg), gr.update(visible=dbg)), inputs=[debug_intermediate], outputs=[intermediates, masked_images])
                     with gr.Tab("COLMAP Params"):
                         exhaustive_match = gr.Checkbox(value=False, label="Use exhaustive feature matcher")
                         glomap = gr.Checkbox(value=False, label="Use GLOMAP")
@@ -306,16 +305,21 @@ if __name__ == "__main__":
                     run = gr.Button("Submit")
                     run.click(fn=lambda: [None]*4,
                             outputs=[masked_images, intermediates, nerf_files, orbit_video]
-                        ).then(fn=mask_frames, 
+                        ).success(
+                            inputs = {use_rembg, num_frames, exhaustive_match, glomap, num_colmap_trials, num_reg_trials, use_per_image, n_steps},
+                            outputs=settings,
+                            api_name="save_settings",
+                            fn = lambda par: "```\n" + "\n".join([comp.label + ": " + f"{value}" for (comp, value) in par.items()]) + "\n```"
+                        ).success(fn=mask_frames, 
                             inputs={video, text_prompt, use_rembg, num_frames}, 
                             outputs=[masked_images, intermediates, nerf_files], 
                             api_name="mask_frames"
-                        ).then(
+                        ).success(
                             fn=run_nerf,
                             inputs={intermediates, use_per_image, n_steps, exhaustive_match, glomap, num_colmap_trials, num_reg_trials},
                             outputs=[nerf_files, model],
                             api_name="run_nerf"
-                        ).then(
+                        ).success(
                             fn=create_video_defaults,
                             inputs={nerf_files},
                             outputs=[orbit_video],
@@ -330,23 +334,29 @@ if __name__ == "__main__":
                         model_res = gr.Number(value=128, label="Marching cubes resolution", precision=0, info="Spatial resolution of the grid used for marching cubes.")
                         regen_model = gr.Button("Regenerate Model")
                         regen_model.click(fn=regen_model_fn, inputs=[nerf_files, model_res], outputs=[model], api_name="regen_model")
+
+                    with gr.Accordion("Parameters"):
+                        settings.render()
+
+                    with gr.Accordion("Frames"):
+                        intermediates.render()
+                        masked_images.render()
+
                     nerf_files.render()
-                    intermediates.render()
-                    masked_images.render()
-                    with gr.Column():
-                        model.render()
-                        orbit_video.render()
-                        with gr.Accordion("Video Parameters", open=True):
-                            with gr.Row():
-                                video_width = gr.Number(value=720, label="Width", precision=0)
-                                video_height = gr.Number(value=480, label="Height", precision=0)
-                            fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
-                            seconds = gr.Number(value=5, label="Video Length (s)", precision=1)
-                            spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
-                            render_vid = gr.Button("Render Video")
-                            render_vid.click(fn=create_video, 
-                                                inputs={nerf_files, video_width, video_height,
-                                                        fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
+                    model.render()
+                    orbit_video.render()
+
+                    with gr.Accordion("Video Parameters", open=True):
+                        with gr.Row():
+                            video_width = gr.Number(value=720, label="Width", precision=0)
+                            video_height = gr.Number(value=480, label="Height", precision=0)
+                        fps = gr.Slider(minimum=10, maximum=60, value=30, label="FPS", step=10)
+                        seconds = gr.Number(value=5, label="Video Length (s)", precision=1)
+                        spp = gr.Slider(1,16,8, label="Samples per Pixel", info="Improves visual result at the cost of longer rending time.")
+                        render_vid = gr.Button("Render Video")
+                        render_vid.click(fn=create_video, 
+                                            inputs={nerf_files, video_width, video_height,
+                                                    fps, seconds, spp}, outputs=[orbit_video], api_name="get_video")
 
         gr.Examples([["examples/cube_clean.mp4", "cube"],
                      ["examples/flower_handheld.mp4", "flower"]], inputs=[video, text_prompt])
