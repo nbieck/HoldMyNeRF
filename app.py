@@ -124,6 +124,7 @@ def mask_frames(params, progress=gr.Progress()):
 
 FEATURE_ALGORITHMS = [
     "COLMAP",
+    "COLMAP_Exhaustive",
     "SuperPoint+LightGlue"
 ]
 
@@ -131,12 +132,18 @@ def run_nerf(params, progress=gr.Progress()):
     print("RUNNING NERF")
     print(params)
 
-    intermediates_zip = params[intermediates][0]
 
     tempdir = tempfile.mkdtemp(prefix="HMN", suffix="nerf")
 
     masked_dir = os.path.join(tempdir, "masked")
-    shutil.unpack_archive(intermediates_zip.name, masked_dir)
+    if intermediates in params:
+        intermediates_zip = params[intermediates][0]
+        shutil.unpack_archive(intermediates_zip.name, masked_dir)
+    else:
+        os.mkdir(masked_dir)
+        imgs = [img for (img, _) in params[images]]
+        for img in imgs:
+            shutil.copy2(img, masked_dir)
 
     progress((2,5), desc="Reconstruction")
     if params[features] == "SuperPoint+LightGlue":
@@ -169,8 +176,11 @@ def run_nerf(params, progress=gr.Progress()):
                         "--ImageReader.camera_params", "",
                         "--database_path", "colmap.db",
                         "--image_path", masked_dir], cwd=tempdir, check=True)
+        matcher = "sequential"
+        if "Exhaustive" in params[features]:
+            matcher = "exhaustive"
         subprocess.run(["COLMAP.bat",
-                        "sequential_matcher",
+                        f"{matcher}_matcher",
                         "SiftMatching.guided_matching=true",
                         "--database_path", "colmap.db"], cwd=tempdir, check=True)
 
@@ -223,7 +233,7 @@ def run_nerf(params, progress=gr.Progress()):
                     os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
                     "--n_steps", f"{params[n_steps]}",
                     "--save_snapshot", "snapshot.ingp",
-                    "--save_mesh", "model.obj",
+                    "--save_mesh", "model.ply",
                     "--marching_cubes_res", "128",
                     os.path.join(tempdir, "transforms.json")], cwd=tempdir)
 
@@ -240,7 +250,7 @@ def run_nerf(params, progress=gr.Progress()):
     print("NERF DONE")
 
     return {nerf_files: [os.path.join(tempdir, "snapshot.ingp"), colmap_data],
-            model: os.path.join(tempdir, "model.obj")}
+            model: os.path.join(tempdir, "model.ply")}
 
 def create_video_defaults(params):
     params[video_width] = 720
@@ -280,17 +290,18 @@ def regen_model_fn(files, resolution):
         sys.executable,
         os.path.join(ROOT_DIR, "dependencies/instant_ngp/scripts/run.py"),
         "--load_snapshot", snapshot,
-        "--save_mesh", "model.obj",
+        "--save_mesh", "model.ply",
         "--marching_cubes_res", f"{resolution}"
     ], cwd=gradio_dir)
 
-    return os.path.join(gradio_dir, "model.obj")
+    return os.path.join(gradio_dir, "model.ply")
 
 if __name__ == "__main__":
     logging.basicConfig(stream = sys.stdout)
     #inputs
     video = gr.Video(format="mp4", sources=["upload"], label="Video", interactive=True)
     text_prompt = gr.Textbox(label="Object Label", info="Provide a label for the object for segmentation", interactive=True)
+    images = gr.Gallery(label="Frames", interactive=True)
 
     #segmentation preview
     segmentation = gr.AnnotatedImage(label="Segmentation")
@@ -308,8 +319,6 @@ if __name__ == "__main__":
 
         with gr.Row():
             with gr.Column():
-                video.render()
-                text_prompt.render()
 
                 with gr.Accordion("Parameters", open=False):
                     with gr.Tab("BG Parameters"):
@@ -324,32 +333,52 @@ if __name__ == "__main__":
                         use_per_image = gr.Checkbox(value=True, label="Per Image Latents", info="Associates a trainable embedding with input images. Can accomodate changes in lighting.")
                         n_steps = gr.Number(value=1000, label="#Steps", precision=0, info="Number of steps to train NeRF.")
 
-                with gr.Row():
-                    preview = gr.Button("Preview Segmentation")
-                    preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
-                    run = gr.Button("Submit")
-                    run.click(fn=lambda: [None]*4,
-                            outputs=[masked_images, intermediates, nerf_files, orbit_video]
-                        ).success(
-                            inputs = {use_rembg, num_frames, features, glomap, num_colmap_trials, num_reg_trials, use_per_image, n_steps},
-                            outputs=settings,
-                            api_name="save_settings",
-                            fn = lambda par: "```\n" + "\n".join([comp.label + ": " + f"{value}" for (comp, value) in par.items()]) + "\n```"
-                        ).success(fn=mask_frames, 
-                            inputs={video, text_prompt, use_rembg, num_frames}, 
-                            outputs=[masked_images, intermediates, nerf_files], 
-                            api_name="mask_frames"
-                        ).success(
-                            fn=run_nerf,
-                            inputs={intermediates, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials},
-                            outputs=[nerf_files, model],
-                            api_name="run_nerf"
-                        ).success(
-                            fn=create_video_defaults,
-                            inputs={nerf_files},
-                            outputs=[orbit_video],
-                            api_name="default_video"
-                        )
+                with gr.Tab("Video Input"):
+                    video.render()
+                    text_prompt.render()
+                    with gr.Row():
+                        preview = gr.Button("Preview Segmentation")
+                        preview.click(fn=preview_segmentation, inputs={video, text_prompt, use_rembg}, outputs=[segmentation], api_name="preview")
+                        run = gr.Button("Submit")
+                        run.click(fn=lambda: [None]*4,
+                                outputs=[masked_images, intermediates, nerf_files, orbit_video]
+                            ).success(
+                                inputs = {use_rembg, num_frames, features, glomap, num_colmap_trials, num_reg_trials, use_per_image, n_steps},
+                                outputs=settings,
+                                api_name="save_settings",
+                                fn = lambda par: "```\n" + "\n".join([comp.label + ": " + f"{value}" for (comp, value) in par.items()]) + "\n```"
+                            ).success(fn=mask_frames, 
+                                inputs={video, text_prompt, use_rembg, num_frames}, 
+                                outputs=[masked_images, intermediates, nerf_files], 
+                                api_name="mask_frames"
+                            ).success(
+                                fn=run_nerf,
+                                inputs={intermediates, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials},
+                                outputs=[nerf_files, model],
+                                api_name="run_nerf"
+                            ).success(
+                                fn=create_video_defaults,
+                                inputs={nerf_files},
+                                outputs=[orbit_video],
+                                api_name="default_video"
+                            )
+                with gr.Tab("Image Input"):
+                    images.render()
+                    run_img = gr.Button("Run")
+                    run_img.click(fn=lambda: [None]*4,
+                                  outputs=[masked_images, intermediates, nerf_files, orbit_video]
+                                ).success(
+                                    fn=run_nerf,
+                                    inputs={images, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials},
+                                    outputs=[nerf_files, model],
+                                    api_name="run_nerf_imgs"
+                                ).success(
+                                    fn=create_video_defaults,
+                                    inputs={nerf_files},
+                                    outputs=[orbit_video],
+                                    api_name="default_video"
+                                )
+
 
             with gr.Column():
                 with gr.Tab("Preview"):
@@ -371,7 +400,7 @@ if __name__ == "__main__":
                     model.render()
                     orbit_video.render()
 
-                    with gr.Accordion("Video Parameters", open=True):
+                    with gr.Accordion("Video Parameters", open=False):
                         with gr.Row():
                             video_width = gr.Number(value=720, label="Width", precision=0)
                             video_height = gr.Number(value=480, label="Height", precision=0)
