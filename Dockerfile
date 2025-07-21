@@ -1,7 +1,10 @@
-FROM nvidia/cuda:12.1.1-devel-ubuntu22.04
+ARG UBUNTU_VER=24.04
+ARG CUDA_VER=12.6.0
+
+FROM nvidia/cuda:${CUDA_VER}-devel-ubuntu${UBUNTU_VER}
 
 # Build arguments. Change these according to Troubleshooting in README.md.
-ARG CUDA_ARCHITECTURES=75
+ARG CUDA_ARCHITECTURES=86
 ARG NUM_JOBS=4
 
 # Create volumes to persist model checkpoints. This is for documentation: use the -v tag to actually mount the volumes in docker run.
@@ -14,11 +17,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \ 
     # instant-ngp requirements:
     gcc \
+    clang \
     cmake \
     build-essential \
     git \
     python3-dev \
     python3-pip \
+    python3-venv \
+    python3-full \
     libopenexr-dev \
     libxi-dev \
     libglfw3-dev \
@@ -56,17 +62,33 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*rm 
 
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PYTHONHOME=
+
+RUN python3 -m pip install --upgrade pip setuptools wheel
+
 # The entire app is installed inside /app
 WORKDIR /app
 COPY .gitmodules /app/
 ADD .git /app/.git
+
+# Install Python requirements
+WORKDIR /app
+ADD requirements /app/requirements
+RUN pip3 install --no-cache-dir -r requirements/linux/requirements.txt && \
+    pip3 install --no-cache-dir -r requirements/linux/requirements_git.txt 
 
 # Update and initialize submodules
 RUN git submodule update --init --recursive
 
 # Build instant-ngp. If you get error 137 (insufficient memory), lower the '-j' parameter
 WORKDIR /app/dependencies/instant_ngp
-RUN cmake . -B build && \
+ENV CC=/usr/bin/clang \
+    CXX=/usr/bin/clang++ \
+    CUDAHOSTCXX=/usr/bin/clang++
+RUN cmake . -B build -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} && \
     cmake --build build --config RelWithDebInfo -j ${NUM_JOBS}
 
 # Build COLMAP
@@ -80,15 +102,22 @@ RUN mkdir build && \
     cmake .. -GNinja -DCMAKE_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES} && \
     ninja -j ${NUM_JOBS} && \
     ninja install && \
-    cd .. && rm -rf colmap
+    cd ..
 
-# Return to app directory
+#build glomap
+WORKDIR /app/dependencies
+RUN wget https://github.com/colmap/glomap/archive/refs/tags/1.1.0.tar.gz
+RUN tar -xf 1.1.0.tar.gz
+WORKDIR /app/dependencies/glomap-1.1.0
+RUN mkdir build && \
+        cd build && \
+        cmake .. -GNinja && \
+        ninja && ninja install
+
+# init hloc
+WORKDIR /app/dependencies/hloc
+RUN python3 -m pip install -e .
 WORKDIR /app
-
-# Install Python requirements
-ADD requirements /app/requirements
-RUN pip3 install --no-cache-dir -r requirements/linux/requirements.txt && \
-    pip3 install --no-cache-dir -r requirements/linux/requirements_git.txt 
 
 # Copy the repo
 COPY . .

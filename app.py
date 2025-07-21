@@ -167,7 +167,7 @@ def run_nerf(params, progress=gr.Progress()):
         triangulation.import_features(image_ids, db, feats)
         triangulation.import_matches(image_ids, db, pairs, matches, skip_geometric_verification=True)
     else:
-        subprocess.run(["COLMAP.bat",
+        subprocess.run(["colmap",
                         "feature_extractor",
                         "--ImageReader.camera_model", "OPENCV",
                         "--SiftExtraction.estimate_affine_shape=true",
@@ -179,7 +179,7 @@ def run_nerf(params, progress=gr.Progress()):
         matcher = "sequential"
         if "Exhaustive" in params[features]:
             matcher = "exhaustive"
-        subprocess.run(["COLMAP.bat",
+        subprocess.run(["colmap",
                         f"{matcher}_matcher",
                         "SiftMatching.guided_matching=true",
                         "--database_path", "colmap.db"], cwd=tempdir, check=True)
@@ -193,21 +193,21 @@ def run_nerf(params, progress=gr.Progress()):
                         "--image_path", masked_dir,
                         "--output_path", "sparse"], cwd=tempdir, check=True)
     else:
-        subprocess.run(["COLMAP.bat",
+        subprocess.run(["colmap",
                         "mapper",
                         "--database_path", "colmap.db",
                         "--image_path", masked_dir,
                         "--output_path", "sparse",
                         "--Mapper.init_num_trials", str(params[num_colmap_trials]),
                         "--Mapper.max_reg_trials", str(params[num_reg_trials])], cwd=tempdir, check=True);
-        subprocess.run(["COLMAP.bat",
+        subprocess.run(["colmap",
                         "bundle_adjuster",
                         "--input_path", "sparse/0",
                         "--output_path", "sparse/0",
                         "--BundleAdjustment.refine_principal_point", "1"], cwd=tempdir, check=True)
 
     os.mkdir(os.path.join(tempdir, "text"))
-    subprocess.run(["COLMAP.bat",
+    subprocess.run(["colmap",
                     "model_converter",
                     "--input_path", "sparse/0",
                     "--output_path", "text",
