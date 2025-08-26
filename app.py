@@ -244,6 +244,8 @@ def run_nerf(params, progress=gr.Progress()):
     shutil.copytree(os.path.join(tempdir, "sparse"), os.path.join(zipdir, "sparse"))
     shutil.copytree(os.path.join(tempdir, "text"), os.path.join(zipdir, "text"))
     shutil.copy2(os.path.join(tempdir, "colmap.db"), zipdir)
+    with open(os.path.join(zipdir, "params.md"), "w") as f:
+        f.write(params[settings])
     colmap_data = shutil.make_archive(os.path.join(tempdir, "colmap"), "zip", zipdir)
     shutil.rmtree(zipdir)
 
@@ -353,7 +355,7 @@ if __name__ == "__main__":
                                 api_name="mask_frames"
                             ).success(
                                 fn=run_nerf,
-                                inputs={intermediates, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials},
+                                inputs={intermediates, use_per_image, n_steps, features, glomap, num_colmap_trials, num_reg_trials, settings},
                                 outputs=[nerf_files, model],
                                 api_name="run_nerf"
                             ).success(
