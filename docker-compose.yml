@@ -1,9 +1,8 @@
-version: '3.8'
-
 services:
   app:
     container_name: hold-my-nerf
     build: .
+    ipc: host
     command: python3 app.py --server_name 0.0.0.0
     volumes:
       - model:/app/model
